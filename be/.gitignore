@@ -1,0 +1,120 @@
+# Laravel Framework
+/vendor/
+/node_modules/
+/public/hot
+/public/storage
+/storage/*.key
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/framework/cache/data/*
+!/storage/framework/cache/data/.gitkeep
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitkeep
+/storage/framework/testing/*
+!/storage/framework/testing/.gitkeep
+/storage/framework/views/*
+!/storage/framework/views/.gitkeep
+
+# Environment files
+.env
+.env.backup
+.env.production
+.env.local
+.env.testing
+
+# Laravel specific
+Homestead.json
+Homestead.yaml
+auth.json
+npm-debug.log
+yarn-error.log
+.phpunit.result.cache
+phpunit.xml
+
+# Composer
+composer.phar
+composer.lock
+
+# Package managers
+package-lock.json
+yarn.lock
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.buildpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.tmp
+*.temp
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Log files
+*.log
+/logs/*
+!/logs/.gitkeep
+
+# Cache files
+/bootstrap/cache/*
+!/bootstrap/cache/.gitkeep
+/storage/app/cache/*
+!/storage/app/cache/.gitkeep
+
+# Uploaded files (except sample data)
+/storage/app/imports/*
+!/storage/app/imports/.gitkeep
+/storage/app/uploads/*
+!/storage/app/uploads/.gitkeep
+!/storage/app/sample_data/
+
+# Build files
+/public/build/
+/public/mix-manifest.json
+
+# Testing
+/coverage/
+/.nyc_output/
+/phpunit.xml
+/.phpunit.result.cache
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Backup files
+*.bak
+*.backup
+
+# Temporary files
+/tmp/
+*.pid
+
+# Laravel Telescope
+/storage/telescope/*
+!/storage/telescope/.gitkeep
+
+# Laravel Horizon
+/storage/horizon/*
+!/storage/horizon/.gitkeep
+
+# Application specific
+/storage/app/private/imports/*
+!/storage/app/private/imports/.gitkeep
