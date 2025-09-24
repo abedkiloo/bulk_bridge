@@ -27,7 +27,7 @@ class EmployeeController extends Controller
             
             // Apply filters
             if ($department) {
-                $query->byDepartment($department);
+                $query->where('department', $department);
             }
             
             if ($country) {

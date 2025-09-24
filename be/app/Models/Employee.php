@@ -48,8 +48,8 @@ class Employee extends Model
             'email' => ['required', 'email', 'max:255'],
             'department' => ['required', 'string', 'max:255'],
             'salary' => ['required', 'numeric', 'min:0'],
-            'currency' => ['required', 'string', 'size:3', 'regex:/^[A-Z]{3}$/'],
-            'country_code' => ['required', 'string', 'size:2', 'regex:/^[A-Z]{2}$/'],
+            'currency' => ['nullable', 'string', 'max:10'],
+            'country_code' => ['nullable', 'string', 'max:10'],
             'start_date' => ['required', 'date', 'before_or_equal:today'],
         ];
     }
@@ -118,13 +118,6 @@ class Employee extends Model
         return number_format($this->salary, 2) . ' ' . $this->currency;
     }
 
-    /**
-     * Scope for filtering by department
-     */
-    public function scopeByDepartment($query, string $department)
-    {
-        return $query->where('department', $department);
-    }
 
     /**
      * Scope for filtering by country

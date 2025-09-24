@@ -21,13 +21,16 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 // Import Management Routes
-Route::prefix('imports')->group(function () {
-    Route::post('/', [ImportController::class, 'store'])->name('imports.store');
-    Route::get('/', [ImportController::class, 'index'])->name('imports.index');
-    Route::get('/{jobId}', [ImportController::class, 'show'])->name('imports.show');
-    Route::post('/{jobId}/cancel', [ImportController::class, 'cancel'])->name('imports.cancel');
-    Route::get('/{jobId}/errors', [ImportController::class, 'errors'])->name('imports.errors');
-    Route::get('/{jobId}/rows', [ImportController::class, 'rows'])->name('imports.rows');
+Route::prefix('import')->group(function () {
+    Route::post('/upload', [ImportController::class, 'store'])->name('import.upload');
+    Route::get('/jobs', [ImportController::class, 'index'])->name('import.jobs');
+    Route::get('/job/{jobId}', [ImportController::class, 'show'])->name('import.job.show');
+    Route::get('/job/{jobId}/details', [ImportController::class, 'details'])->name('import.job.details');
+    Route::post('/job/{jobId}/cancel', [ImportController::class, 'cancel'])->name('import.job.cancel');
+    Route::post('/job/{jobId}/retry', [ImportController::class, 'retry'])->name('import.job.retry');
+    Route::get('/job/{jobId}/errors', [ImportController::class, 'errors'])->name('import.job.errors');
+    Route::get('/job/{jobId}/rows', [ImportController::class, 'rows'])->name('import.job.rows');
+    Route::get('/job/{jobId}/status', [ImportController::class, 'status'])->name('import.job.status');
 });
 
 // Employee Management Routes

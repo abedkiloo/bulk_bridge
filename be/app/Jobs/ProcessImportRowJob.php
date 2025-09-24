@@ -11,13 +11,14 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Bus\Batchable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ProcessImportRowJob implements ShouldQueue
 {
-    use Queueable, InteractsWithQueue, SerializesModels;
+    use Queueable, InteractsWithQueue, SerializesModels, Batchable;
 
     public int $timeout = 300; // 5 minutes
     public int $tries = 3;
@@ -128,10 +129,16 @@ class ProcessImportRowJob implements ShouldQueue
     {
         $errorMessages = [];
         foreach ($errors as $field => $fieldErrors) {
-            $errorMessages = array_merge($errorMessages, $fieldErrors);
+            if (is_array($fieldErrors)) {
+                foreach ($fieldErrors as $error) {
+                    $errorMessages[] = $field . ': ' . $error;
+                }
+            } else {
+                $errorMessages[] = $field . ': ' . $fieldErrors;
+            }
         }
         
-        $errorMessage = implode(', ', $errorMessages);
+        $errorMessage = implode('; ', $errorMessages);
         
         $importRow->markAsFailed($errorMessage, $errors);
         

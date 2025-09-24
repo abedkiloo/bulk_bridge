@@ -1,0 +1,224 @@
+.upload-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.page-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.page-header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.page-header p {
+  font-size: 1.1rem;
+  color: #666;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.upload-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+.upload-card {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
+}
+
+.upload-info {
+  background: #f8f9fa;
+  border-radius: 16px;
+  padding: 32px;
+  border: 1px solid #e9ecef;
+}
+
+.upload-info h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.requirements-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.requirement-item {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e9ecef;
+}
+
+.requirement-item h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.requirement-item ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.requirement-item li {
+  padding: 6px 0;
+  color: #666;
+  font-size: 14px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.requirement-item li:last-child {
+  border-bottom: none;
+}
+
+.requirement-item li::before {
+  content: '✓';
+  color: #28a745;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+.sample-data {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.sample-data code {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #333;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.error-message,
+.success-message {
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.error-message {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}
+
+.success-message {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+}
+
+.error-icon,
+.success-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.error-content,
+.success-content {
+  flex: 1;
+}
+
+.error-content h4,
+.success-content h4 {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.error-content p,
+.success-content p {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+}
+
+.error-content p:last-child,
+.success-content p:last-child {
+  margin-bottom: 0;
+}
+
+.retry-button {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.3s ease;
+}
+
+.retry-button:hover {
+  background: #c82333;
+}
+
+@media (max-width: 968px) {
+  .upload-container {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+  
+  .upload-card,
+  .upload-info {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .upload-page {
+    padding: 20px 15px;
+  }
+  
+  .page-header h1 {
+    font-size: 2rem;
+  }
+  
+  .page-header p {
+    font-size: 1rem;
+  }
+  
+  .upload-card,
+  .upload-info {
+    padding: 20px;
+  }
+  
+  .requirements-grid {
+    gap: 16px;
+  }
+  
+  .requirement-item {
+    padding: 16px;
+  }
+}

@@ -55,26 +55,11 @@ class EmployeeValidationService
             if ($salary < 0) {
                 $errors['salary'][] = 'Salary cannot be negative';
             }
-            if ($salary > 10000000) { // 10 million
-                $errors['salary'][] = 'Salary seems unreasonably high';
-            }
         }
         
-        // Validate currency codes
-        if (isset($rowData['currency'])) {
-            $validCurrencies = ['USD', 'EUR', 'GBP', 'ZAR', 'KES', 'UGX', 'TZS', 'RWF', 'NGN'];
-            if (!in_array(strtoupper($rowData['currency']), $validCurrencies)) {
-                $errors['currency'][] = 'Invalid currency code. Must be one of: ' . implode(', ', $validCurrencies);
-            }
-        }
+        // Currency validation removed - now accepts any currency code
         
-        // Validate country codes
-        if (isset($rowData['country_code'])) {
-            $validCountries = ['US', 'GB', 'ZA', 'KE', 'UG', 'TZ', 'RW', 'NG'];
-            if (!in_array(strtoupper($rowData['country_code']), $validCountries)) {
-                $errors['country_code'][] = 'Invalid country code. Must be one of: ' . implode(', ', $validCountries);
-            }
-        }
+        // Country code validation removed - now accepts any country code
         
         // Validate start date
         if (isset($rowData['start_date'])) {
@@ -82,21 +67,9 @@ class EmployeeValidationService
             if ($startDate->isFuture()) {
                 $errors['start_date'][] = 'Start date cannot be in the future';
             }
-            if ($startDate->isBefore('1900-01-01')) {
-                $errors['start_date'][] = 'Start date cannot be before 1900';
-            }
         }
         
-        // Validate email domain
-        if (isset($rowData['email'])) {
-            $email = $rowData['email'];
-            $allowedDomains = ['workmail.co', 'company.africa', 'mail.test'];
-            $emailDomain = substr(strrchr($email, "@"), 1);
-            
-            if (!in_array($emailDomain, $allowedDomains)) {
-                $errors['email'][] = 'Email domain not allowed. Must be one of: ' . implode(', ', $allowedDomains);
-            }
-        }
+    
         
         // Validate employee number format
         if (isset($rowData['employee_number'])) {
@@ -127,16 +100,7 @@ class EmployeeValidationService
             }
         }
         
-        // Validate department
-        if (isset($rowData['department'])) {
-            $validDepartments = [
-                'Engineering', 'Finance', 'Support', 'Customer Success', 
-                'Human Resources', 'Marketing', 'Sales', 'Operations'
-            ];
-            if (!in_array($rowData['department'], $validDepartments)) {
-                $errors['department'][] = 'Invalid department. Must be one of: ' . implode(', ', $validDepartments);
-            }
-        }
+  
         
         return [
             'valid' => empty($errors),
@@ -207,10 +171,7 @@ class EmployeeValidationService
                 // Trim whitespace
                 $value = trim($value);
                 
-                // Convert to uppercase for specific fields
-                if (in_array($key, ['currency', 'country_code'])) {
-                    $value = strtoupper($value);
-                }
+                // Currency uppercase conversion removed - now preserves original case
                 
                 // Capitalize names
                 if (in_array($key, ['first_name', 'last_name', 'department'])) {

@@ -1,0 +1,111 @@
+services:
+  # Using local PostgreSQL database (no Docker container needed)
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: bulkbridge_redis_dev
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass redis_password
+    volumes:
+      - redis_dev_data:/data
+    ports:
+      - "6380:6379"
+    networks:
+      - bulkbridge_dev_network
+
+  # Laravel Backend (Development)
+  backend:
+    build:
+      context: ./be
+      dockerfile: Dockerfile
+    container_name: bulkbridge_backend_dev
+    restart: unless-stopped
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=base64:your-app-key-here
+      - DB_CONNECTION=pgsql
+      - DB_HOST=host.docker.internal
+      - DB_PORT=5432
+      - DB_DATABASE=bulkbridge
+      - DB_USERNAME=${DB_USERNAME:-abedkiloo}
+      - DB_PASSWORD=${DB_PASSWORD:-}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=redis_password
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=redis
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+    volumes:
+      - ./be:/var/www/html
+      - backend_dev_storage:/var/www/html/storage
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    networks:
+      - bulkbridge_dev_network
+
+  # Queue Worker (Development)
+  queue:
+    build:
+      context: ./be
+      dockerfile: Dockerfile
+    container_name: bulkbridge_queue_dev
+    restart: unless-stopped
+    command: ./start-queue.sh
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=base64:your-app-key-here
+      - DB_CONNECTION=pgsql
+      - DB_HOST=host.docker.internal
+      - DB_PORT=5432
+      - DB_DATABASE=bulkbridge
+      - DB_USERNAME=${DB_USERNAME:-abedkiloo}
+      - DB_PASSWORD=${DB_PASSWORD:-}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=redis_password
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=redis
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+    volumes:
+      - ./be:/var/www/html
+      - backend_dev_storage:/var/www/html/storage
+    depends_on:
+      - redis
+      - backend
+    networks:
+      - bulkbridge_dev_network
+
+  # React Frontend (Development)
+  frontend:
+    build:
+      context: ./fe
+      dockerfile: Dockerfile
+      target: development
+    container_name: bulkbridge_frontend_dev
+    restart: unless-stopped
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api
+    volumes:
+      - ./fe:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - bulkbridge_dev_network
+
+volumes:
+  redis_dev_data:
+    driver: local
+  backend_dev_storage:
+    driver: local
+
+networks:
+  bulkbridge_dev_network:
+    driver: bridge

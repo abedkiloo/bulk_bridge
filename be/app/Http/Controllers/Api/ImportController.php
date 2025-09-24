@@ -9,6 +9,7 @@ use App\Models\ImportRow;
 use App\Models\ImportError;
 use App\Jobs\ProcessBulkImportJob;
 use App\Services\CsvParserService;
+use App\Services\RedisJobService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
@@ -18,16 +19,32 @@ use Illuminate\Support\Str;
 class ImportController extends Controller
 {
     public function __construct(
-        private CsvParserService $csvParser
+        private CsvParserService $csvParser,
+        private ?RedisJobService $redisJobService = null
     ) {}
 
     /**
      * Upload and start CSV import
      */
-    public function store(StoreImportRequest $request): JsonResponse
+    public function store(Request $request): JsonResponse
     {
         try {
-            $file = $request->file('csv_file');
+            $file = $request->file('file');
+            
+            if (!$file) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No file uploaded'
+                ], 400);
+            }
+            
+            // Validate file type
+            if (!$file->isValid()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid file upload'
+                ], 400);
+            }
             
             // Generate unique filename
             $filename = Str::uuid() . '.' . $file->getClientOriginalExtension();
@@ -76,11 +93,20 @@ class ImportController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'CSV file uploaded successfully. Import job started.',
-                'data' => [
+                'job' => [
                     'job_id' => $importJob->job_id,
+                    'filename' => $importJob->filename,
+                    'original_filename' => $importJob->original_filename,
                     'status' => $importJob->status,
                     'total_rows' => $importJob->total_rows,
+                    'processed_rows' => $importJob->processed_rows,
+                    'successful_rows' => $importJob->successful_rows,
+                    'failed_rows' => $importJob->failed_rows,
+                    'file_size' => $fileStats['file_size'],
                     'created_at' => $importJob->created_at->toISOString(),
+                    'started_at' => $importJob->started_at?->toISOString(),
+                    'completed_at' => $importJob->completed_at?->toISOString(),
+                    'error_message' => $importJob->error_message,
                 ]
             ], 201);
             
@@ -106,6 +132,45 @@ class ImportController extends Controller
         try {
             $importJob = ImportJob::where('job_id', $jobId)->firstOrFail();
             
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'job_id' => $importJob->job_id,
+                    'filename' => $importJob->filename,
+                    'original_filename' => $importJob->original_filename,
+                    'status' => $importJob->status,
+                    'total_rows' => $importJob->total_rows,
+                    'processed_rows' => $importJob->processed_rows,
+                    'successful_rows' => $importJob->successful_rows,
+                    'failed_rows' => $importJob->failed_rows,
+                    'duplicate_rows' => $importJob->duplicate_rows,
+                    'progress_percentage' => $importJob->progress_percentage,
+                    'success_rate' => $importJob->success_rate,
+                    'file_size' => $importJob->metadata['file_size'] ?? null,
+                    'created_at' => $importJob->created_at->toISOString(),
+                    'started_at' => $importJob->started_at?->toISOString(),
+                    'completed_at' => $importJob->completed_at?->toISOString(),
+                    'error_message' => $importJob->error_message,
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Import job not found',
+                'error' => $e->getMessage()
+            ], 404);
+        }
+    }
+
+    /**
+     * Get detailed import job information
+     */
+    public function details(string $jobId): JsonResponse
+    {
+        try {
+            $importJob = ImportJob::where('job_id', $jobId)->firstOrFail();
+            
             $progress = $importJob->getCachedProgress();
             $statistics = $importJob->getStatistics();
             
@@ -124,6 +189,57 @@ class ImportController extends Controller
                 'message' => 'Import job not found',
                 'error' => $e->getMessage()
             ], 404);
+        }
+    }
+
+    /**
+     * Retry a failed import job
+     */
+    public function retry(string $jobId): JsonResponse
+    {
+        try {
+            $importJob = ImportJob::where('job_id', $jobId)->firstOrFail();
+            
+            if ($importJob->status !== 'failed') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Only failed jobs can be retried'
+                ], 400);
+            }
+            
+            // Reset job status and clear previous results
+            $importJob->update([
+                'status' => 'pending',
+                'processed_rows' => 0,
+                'successful_rows' => 0,
+                'failed_rows' => 0,
+                'duplicate_rows' => 0,
+                'error_message' => null,
+                'started_at' => null,
+                'completed_at' => null,
+            ]);
+            
+            // Clear related data
+            $importJob->importRows()->delete();
+            $importJob->importErrors()->delete();
+            $importJob->clearProgressCache();
+            
+            // Dispatch the job again
+            ProcessBulkImportJob::dispatch($importJob);
+            
+            Log::info("Import job retried", ['job_id' => $jobId]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Import job retried successfully'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retry import job',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -322,6 +438,74 @@ class ImportController extends Controller
                 'success' => false,
                 'message' => 'Failed to cancel import job',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get job status via Redis polling
+     */
+    public function status(string $jobId): JsonResponse
+    {
+        try {
+            // Try Redis first, fall back to database if Redis is unavailable
+            $jobData = null;
+            if ($this->redisJobService) {
+                try {
+                    $jobData = $this->redisJobService->getJobStatus($jobId);
+                } catch (\Exception $redisError) {
+                    Log::warning('Redis unavailable, falling back to database', [
+                        'job_id' => $jobId,
+                        'error' => $redisError->getMessage()
+                    ]);
+                }
+            }
+            
+            // If Redis failed or returned no data, get from database
+            if (!$jobData) {
+                $importJob = ImportJob::where('job_id', $jobId)->first();
+                if (!$importJob) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Job not found'
+                    ], 404);
+                }
+                
+                $jobData = [
+                    'job_id' => $importJob->job_id,
+                    'filename' => $importJob->filename,
+                    'original_filename' => $importJob->original_filename,
+                    'status' => $importJob->status,
+                    'total_rows' => $importJob->total_rows,
+                    'processed_rows' => $importJob->processed_rows,
+                    'successful_rows' => $importJob->successful_rows,
+                    'failed_rows' => $importJob->failed_rows,
+                    'duplicate_rows' => $importJob->duplicate_rows,
+                    'progress_percentage' => $importJob->progress_percentage,
+                    'success_rate' => $importJob->success_rate,
+                    'file_size' => $importJob->metadata['file_size'] ?? null,
+                    'created_at' => $importJob->created_at->toISOString(),
+                    'started_at' => $importJob->started_at?->toISOString(),
+                    'completed_at' => $importJob->completed_at?->toISOString(),
+                    'error_message' => $importJob->error_message,
+                ];
+            }
+            
+            return response()->json([
+                'success' => true,
+                'data' => $jobData,
+                'timestamp' => now()->toISOString()
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Error getting job status', [
+                'job_id' => $jobId,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving job status'
             ], 500);
         }
     }
