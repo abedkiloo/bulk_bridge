@@ -1,18 +1,33 @@
 import React from 'react';
+import Logo from './Logo';
+import { UploadIcon, MonitorIcon, DetailsIcon } from './PageIcons';
 import './Navigation.css';
 
 const Navigation = ({ activePage, onPageChange }) => {
   const pages = [
-    { id: 'upload', label: '📁 Upload', icon: '📁' },
-    { id: 'monitor', label: '📊 Monitor', icon: '📊' },
-    { id: 'history', label: '📋 History', icon: '📋' }
+    { id: 'upload', label: 'Upload', icon: 'upload' },
+    { id: 'monitor', label: 'Monitor', icon: 'monitor' },
+    { id: 'details', label: 'Details', icon: 'details' }
   ];
+
+  const renderIcon = (iconType) => {
+    switch (iconType) {
+      case 'upload':
+        return <UploadIcon size="medium" />;
+      case 'monitor':
+        return <MonitorIcon size="medium" />;
+      case 'details':
+        return <DetailsIcon size="medium" />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <nav className="navigation">
       <div className="nav-container">
         <div className="nav-brand">
-          <h2>🚀 BulkBridge</h2>
+          <Logo size="medium" showText={true} />
         </div>
         
         <div className="nav-menu">
@@ -22,7 +37,7 @@ const Navigation = ({ activePage, onPageChange }) => {
               className={`nav-item ${activePage === page.id ? 'active' : ''}`}
               onClick={() => onPageChange(page.id)}
             >
-              <span className="nav-icon">{page.icon}</span>
+              <span className="nav-icon">{renderIcon(page.icon)}</span>
               <span className="nav-label">{page.label}</span>
             </button>
           ))}

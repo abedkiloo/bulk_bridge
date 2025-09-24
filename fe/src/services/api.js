@@ -65,6 +65,11 @@ export const bulkBridgeAPI = {
   retryJob: async (jobId) => {
     return api.post(`/import/job/${jobId}/retry`);
   },
+
+  // Dispatch a pending job to the queue
+  dispatchJob: async (jobId) => {
+    return api.post(`/import/job/${jobId}/dispatch`);
+  },
 };
 
 // Error handler for API responses

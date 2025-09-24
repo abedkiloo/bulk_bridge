@@ -33,7 +33,10 @@ const MonitorPage = ({ currentJob, onJobSelect }) => {
     setError(null);
     try {
       const response = await bulkBridgeAPI.getJobs();
-      setJobs(response.data.data || []);
+      const allJobs = response.data.data || [];
+      // Filter out completed jobs - they don't need monitoring
+      const activeJobs = allJobs.filter(job => job.status !== 'completed');
+      setJobs(activeJobs);
     } catch (err) {
       setError('Failed to fetch jobs');
       console.error('Error fetching jobs:', err);
@@ -52,7 +55,6 @@ const MonitorPage = ({ currentJob, onJobSelect }) => {
   };
 
   const handleJobComplete = (job) => {
-    console.log('Job completed:', job);
     // Refresh the jobs list when a job completes (without loading state)
     fetchJobs(false);
   };
@@ -89,8 +91,7 @@ const MonitorPage = ({ currentJob, onJobSelect }) => {
     return (
       <div className="monitor-page">
         <div className="page-header">
-          <h1>📊 Monitor Uploads</h1>
-          <p>Track the progress of your employee data imports in real-time</p>
+          <h1>Monitor Uploads</h1>
         </div>
         <div className="loading-state">
           <div className="spinner"></div>
@@ -103,8 +104,7 @@ const MonitorPage = ({ currentJob, onJobSelect }) => {
   return (
     <div className="monitor-page">
       <div className="page-header">
-        <h1>📊 Monitor Uploads</h1>
-        <p>Track the progress of your employee data imports in real-time</p>
+        <h1>Monitor Uploads</h1>
         <button onClick={() => fetchJobs(true)} className="refresh-btn">
           🔄 Refresh
         </button>

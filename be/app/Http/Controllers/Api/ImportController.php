@@ -244,6 +244,40 @@ class ImportController extends Controller
     }
 
     /**
+     * Dispatch a pending job to the queue
+     */
+    public function dispatch(string $jobId): JsonResponse
+    {
+        try {
+            $importJob = ImportJob::where('job_id', $jobId)->firstOrFail();
+            
+            if ($importJob->status !== 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Only pending jobs can be dispatched'
+                ], 400);
+            }
+            
+            // Dispatch the job to the queue
+            ProcessBulkImportJob::dispatch($importJob);
+            
+            Log::info("Import job dispatched", ['job_id' => $jobId]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Import job dispatched successfully'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to dispatch import job',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Get all import jobs with pagination
      */
     public function index(Request $request): JsonResponse

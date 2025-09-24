@@ -54,7 +54,7 @@ services:
       dockerfile: Dockerfile
     container_name: bulkbridge_queue_dev
     restart: unless-stopped
-    command: ./start-queue.sh
+    command: php artisan queue:work --queue=imports --timeout=1800 --tries=1 --max-jobs=10 --max-time=300 --verbose --sleep=3
     environment:
       - APP_ENV=local
       - APP_DEBUG=true

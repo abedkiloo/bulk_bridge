@@ -28,6 +28,7 @@ Route::prefix('import')->group(function () {
     Route::get('/job/{jobId}/details', [ImportController::class, 'details'])->name('import.job.details');
     Route::post('/job/{jobId}/cancel', [ImportController::class, 'cancel'])->name('import.job.cancel');
     Route::post('/job/{jobId}/retry', [ImportController::class, 'retry'])->name('import.job.retry');
+    Route::post('/job/{jobId}/dispatch', [ImportController::class, 'dispatch'])->name('import.job.dispatch');
     Route::get('/job/{jobId}/errors', [ImportController::class, 'errors'])->name('import.job.errors');
     Route::get('/job/{jobId}/rows', [ImportController::class, 'rows'])->name('import.job.rows');
     Route::get('/job/{jobId}/status', [ImportController::class, 'status'])->name('import.job.status');

@@ -50,6 +50,7 @@ RUN php artisan key:generate --no-interaction || true
 
 # Set permissions
 RUN chmod -R 755 storage bootstrap/cache
+RUN chmod +x start-queue.sh || true
 
 # Create storage directories
 RUN mkdir -p storage/app/public \

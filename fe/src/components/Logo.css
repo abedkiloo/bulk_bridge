@@ -1,0 +1,352 @@
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.logo-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Size Variants */
+.logo-small .logo-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.logo-medium .logo-icon {
+  width: 48px;
+  height: 48px;
+}
+
+.logo-large .logo-icon {
+  width: 64px;
+  height: 64px;
+}
+
+/* Bridge Design */
+.bridge {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bridge-pillar {
+  position: absolute;
+  width: 3px;
+  background: linear-gradient(180deg, #4A90E2 0%, #2E5BBA 100%);
+  border-radius: 2px;
+  box-shadow: 0 2px 4px rgba(74, 144, 226, 0.3);
+}
+
+.bridge-pillar-left {
+  left: 20%;
+  height: 60%;
+  bottom: 0;
+}
+
+.bridge-pillar-right {
+  right: 20%;
+  height: 60%;
+  bottom: 0;
+}
+
+.bridge-deck {
+  position: absolute;
+  width: 80%;
+  height: 4px;
+  background: linear-gradient(90deg, #4A90E2 0%, #2E5BBA 100%);
+  border-radius: 2px;
+  bottom: 30%;
+  box-shadow: 0 2px 4px rgba(74, 144, 226, 0.3);
+}
+
+.bridge-cables {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.cable {
+  position: absolute;
+  width: 1px;
+  background: linear-gradient(180deg, #4A90E2 0%, transparent 100%);
+  border-radius: 1px;
+}
+
+.cable-1 {
+  left: 15%;
+  height: 50%;
+  top: 0;
+  transform: rotate(-15deg);
+}
+
+.cable-2 {
+  left: 35%;
+  height: 45%;
+  top: 0;
+  transform: rotate(-8deg);
+}
+
+.cable-3 {
+  right: 35%;
+  height: 45%;
+  top: 0;
+  transform: rotate(8deg);
+}
+
+.cable-4 {
+  right: 15%;
+  height: 50%;
+  top: 0;
+  transform: rotate(15deg);
+}
+
+/* Data Flow Animation */
+.data-flow {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.data-stream {
+  position: absolute;
+  display: flex;
+  gap: 2px;
+  animation: dataFlow 3s ease-in-out infinite;
+}
+
+.data-stream-1 {
+  top: 20%;
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.data-stream-2 {
+  top: 50%;
+  left: 5%;
+  animation-delay: 1s;
+}
+
+.data-stream-3 {
+  top: 80%;
+  left: 15%;
+  animation-delay: 2s;
+}
+
+.data-point {
+  width: 2px;
+  height: 2px;
+  background: #4A90E2;
+  border-radius: 50%;
+  opacity: 0.8;
+  animation: dataPointPulse 2s ease-in-out infinite;
+}
+
+.data-stream-2 .data-point {
+  background: #2E5BBA;
+  animation-delay: 0.5s;
+}
+
+.data-stream-3 .data-point {
+  background: #1E3A8A;
+  animation-delay: 1s;
+}
+
+/* Balance Scale */
+.balance-scale {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scale-arm {
+  position: absolute;
+  width: 60%;
+  height: 2px;
+  background: linear-gradient(90deg, #4A90E2 0%, #2E5BBA 100%);
+  border-radius: 1px;
+  top: 50%;
+  left: 20%;
+  transform: translateY(-50%);
+  box-shadow: 0 1px 2px rgba(74, 144, 226, 0.3);
+}
+
+.scale-pan {
+  position: absolute;
+  width: 8px;
+  height: 6px;
+  background: linear-gradient(180deg, #4A90E2 0%, #2E5BBA 100%);
+  border-radius: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  box-shadow: 0 1px 2px rgba(74, 144, 226, 0.3);
+}
+
+.scale-pan-left {
+  left: 15%;
+}
+
+.scale-pan-right {
+  right: 15%;
+}
+
+.scale-weight {
+  position: absolute;
+  width: 4px;
+  height: 3px;
+  background: #2E5BBA;
+  border-radius: 1px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: scaleBalance 4s ease-in-out infinite;
+}
+
+.scale-pan-right .scale-weight {
+  animation-delay: 2s;
+}
+
+.scale-base {
+  position: absolute;
+  width: 4px;
+  height: 8px;
+  background: linear-gradient(180deg, #4A90E2 0%, #2E5BBA 100%);
+  border-radius: 2px;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 1px 2px rgba(74, 144, 226, 0.3);
+}
+
+/* Logo Text */
+.logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.logo-primary {
+  font-size: 1.2em;
+  font-weight: 700;
+  color: #2E5BBA;
+  letter-spacing: -0.5px;
+}
+
+.logo-secondary {
+  font-size: 0.9em;
+  font-weight: 500;
+  color: #4A90E2;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Size-specific text adjustments */
+.logo-small .logo-text {
+  display: none;
+}
+
+.logo-medium .logo-primary {
+  font-size: 1.1em;
+}
+
+.logo-medium .logo-secondary {
+  font-size: 0.8em;
+}
+
+.logo-large .logo-primary {
+  font-size: 1.4em;
+}
+
+.logo-large .logo-secondary {
+  font-size: 1em;
+}
+
+/* Animations */
+@keyframes dataFlow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: translateX(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(10px);
+  }
+}
+
+@keyframes dataPointPulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes scaleBalance {
+  0%, 100% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  25% {
+    transform: translate(-50%, -50%) rotate(-5deg);
+  }
+  75% {
+    transform: translate(-50%, -50%) rotate(5deg);
+  }
+}
+
+/* Hover Effects */
+.logo-container:hover .data-point {
+  animation-duration: 1s;
+}
+
+.logo-container:hover .scale-weight {
+  animation-duration: 2s;
+}
+
+.logo-container:hover .logo-primary {
+  color: #1E3A8A;
+}
+
+.logo-container:hover .logo-secondary {
+  color: #2E5BBA;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .logo-container {
+    gap: 8px;
+  }
+  
+  .logo-medium .logo-icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .logo-medium .logo-primary {
+    font-size: 1em;
+  }
+  
+  .logo-medium .logo-secondary {
+    font-size: 0.7em;
+  }
+}

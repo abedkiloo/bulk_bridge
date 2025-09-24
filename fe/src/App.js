@@ -1,13 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navigation from './components/Navigation';
 import UploadPage from './pages/UploadPage';
 import MonitorPage from './pages/MonitorPage';
-import HistoryPage from './pages/HistoryPage';
+import DetailsPage from './pages/DetailsPage';
+import JobDetailsStandalone from './pages/JobDetailsStandalone';
 import './App.css';
 
-function App() {
+// Main App Content Component
+const AppContent = () => {
   const [activePage, setActivePage] = useState('upload');
   const [currentJob, setCurrentJob] = useState(null);
+  const [showJobDetails, setShowJobDetails] = useState(false);
+
+  // Check for jobId parameter on load
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const jobId = urlParams.get('jobId');
+    if (jobId) {
+      setShowJobDetails(true);
+    }
+  }, []);
 
   const handlePageChange = (page) => {
     setActivePage(page);
@@ -23,8 +35,6 @@ function App() {
     setActivePage('monitor'); // Switch to monitor page when job is selected
   };
 
-
-
   const renderPage = () => {
     switch (activePage) {
       case 'upload':
@@ -36,8 +46,8 @@ function App() {
             onJobSelect={handleJobSelect}
           />
         );
-      case 'history':
-        return <HistoryPage onJobSelect={handleJobSelect} />;
+      case 'details':
+        return <DetailsPage />;
       case 'settings':
         return (
           <div className="settings-page">
@@ -70,6 +80,11 @@ function App() {
     }
   };
 
+  // If jobId parameter is present, show job details page
+  if (showJobDetails) {
+    return <JobDetailsStandalone />;
+  }
+
   return (
     <div className="App">
       <Navigation 
@@ -88,6 +103,10 @@ function App() {
       </footer>
     </div>
   );
+};
+
+function App() {
+  return <AppContent />;
 }
 
 export default App;

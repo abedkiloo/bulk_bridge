@@ -23,7 +23,6 @@ const useJobStream = (jobId, options = {}) => {
     if (!jobId || !isActiveRef.current) return;
 
     try {
-      console.log('Polling job status for:', jobId);
       const response = await bulkBridgeAPI.getJobStatus(jobId);
       
       if (response.data.success) {
@@ -51,7 +50,6 @@ const useJobStream = (jobId, options = {}) => {
         
         // Stop polling if job is completed or failed
         if (newJobData.status === 'completed' || newJobData.status === 'failed') {
-          console.log('Job completed/failed, stopping polling');
           setIsConnected(false);
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
@@ -77,11 +75,8 @@ const useJobStream = (jobId, options = {}) => {
 
   const startPolling = useCallback(() => {
     if (!jobId || pollIntervalRef.current) {
-      console.log('Not starting polling - jobId:', jobId, 'pollIntervalRef.current:', pollIntervalRef.current);
       return;
     }
-
-    console.log('Starting polling for job:', jobId, 'with interval:', pollInterval);
     
     // Initial fetch
     if (pollJobStatusRef.current) {
@@ -99,7 +94,6 @@ const useJobStream = (jobId, options = {}) => {
   }, [jobId, pollInterval]);
 
   const stopPolling = useCallback(() => {
-    console.log('Stopping polling, current interval:', pollIntervalRef.current);
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = null;

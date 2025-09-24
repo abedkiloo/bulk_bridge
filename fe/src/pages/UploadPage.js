@@ -18,7 +18,6 @@ const UploadPage = ({ onUploadSuccess }) => {
     setUploadSuccess(false);
 
     try {
-      console.log('Uploading file:', file.name);
       const response = await bulkBridgeAPI.uploadFile(file, (progress) => {
         setUploadProgress(progress);
       });
@@ -26,7 +25,6 @@ const UploadPage = ({ onUploadSuccess }) => {
       if (response.data.success) {
         setUploadSuccess(true);
         setUploadProgress(100);
-        console.log('File uploaded successfully:', response.data);
         
         // Notify parent component
         if (onUploadSuccess) {
@@ -62,8 +60,7 @@ const UploadPage = ({ onUploadSuccess }) => {
   return (
     <div className="upload-page">
       <div className="page-header">
-        <h1>📁 Upload CSV File</h1>
-        <p>Select a CSV file containing employee data to start the import process</p>
+        <h1>Upload CSV File</h1>
       </div>
 
       <div className="upload-container">
@@ -101,7 +98,7 @@ const UploadPage = ({ onUploadSuccess }) => {
         </div>
 
         <div className="upload-info">
-          <h3>📋 CSV Format Requirements</h3>
+          <h3>CSV Format Requirements</h3>
           <div className="requirements-grid">
             <div className="requirement-item">
               <h4>Required Columns</h4>
