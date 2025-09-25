@@ -4,7 +4,7 @@ A robust, full-stack application for bulk importing employee data from CSV files
 
 ## 🏗️ Architecture
 
-- **Backend**: Laravel 12 (PHP 8.2) with PostgreSQL
+- **Backend**: Laravel 12 (PHP 8.4) with PostgreSQL
 - **Frontend**: React 18 with modern UI components
 - **Queue System**: Redis-based job processing
 - **Database**: PostgreSQL with optimized schema
@@ -49,17 +49,18 @@ CREATE DATABASE bulkbridge;
 ### 3. Start the Application
 ```bash
 # Make the startup script executable
-chmod +x docker.sh
+chmod +x docker-setup.sh
 
 # Start all services
-./docker.sh
+./docker-setup.sh
 ```
 
 ### 4. Access the Application
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000/api
+- **Frontend**: http://localhost
+- **Backend API**: http://localhost/api
+- **Health Check**: http://localhost/health
 - **Database**: localhost:5432 (PostgreSQL)
-- **Redis**: localhost:6380
+- **Redis**: localhost:6379
 
 ## 🔧 Detailed Setup Guide
 
@@ -71,6 +72,7 @@ The application automatically configures itself to use your local PostgreSQL dat
 - **Frontend**: React development server with hot reload
 - **Queue Worker**: Optimized for bulk processing
 - **Redis**: For caching and job management
+- **Nginx**: Reverse proxy for routing requests
 
 ### Database Configuration
 
@@ -85,10 +87,11 @@ The system connects to your local PostgreSQL instance:
 
 | Service | Port | Description |
 |---------|------|-------------|
-| Frontend | 3000 | React development server |
-| Backend | 8000 | Laravel API server |
+| Frontend | 80 | React app (via Nginx) |
+| Backend | 80/api | Laravel API (via Nginx) |
 | PostgreSQL | 5432 | Database (host machine) |
-| Redis | 6380 | Cache and queue management |
+| Redis | 6379 | Cache and queue management |
+| Nginx | 80 | Reverse proxy |
 
 ## 📊 Using the Application
 
@@ -119,22 +122,41 @@ Jane,Smith,jane.smith@example.com,+1234567891,Marketing,Manager,85000,2023-02-01
 
 ## 🛠️ Development Commands
 
-### Docker Commands
+### Docker Service Management
 ```bash
 # Start all services
-./docker.sh
+./docker-setup.sh
 
 # Stop all services
 docker compose down
 
-# View logs
-docker compose logs -f [service_name]
+# Start services in background
+docker compose up -d
+
+# View logs (real-time)
+docker compose logs -f
+
+# View logs for specific service
+docker compose logs -f backend
+docker compose logs -f frontend
+docker compose logs -f postgres
+docker compose logs -f redis
 
 # Restart a specific service
-docker compose restart [service_name]
+docker compose restart backend
+docker compose restart frontend
+
+# Rebuild and start (after code changes)
+docker compose down
+docker compose up -d --build
+
+# Check service status
+docker compose ps
 
 # Access container shell
-docker compose exec [service_name] /bin/sh
+docker compose exec backend bash
+docker compose exec frontend sh
+docker compose exec postgres psql -U bulkbridge -d bulkbridge
 ```
 
 ### Backend Commands
@@ -142,15 +164,25 @@ docker compose exec [service_name] /bin/sh
 # Run migrations
 docker compose exec backend php artisan migrate
 
+# Run migrations with force (for production)
+docker compose exec backend php artisan migrate --force
+
 # Clear caches
 docker compose exec backend php artisan cache:clear
 docker compose exec backend php artisan config:clear
+docker compose exec backend php artisan route:clear
+docker compose exec backend php artisan view:clear
 
 # Run tests
 docker compose exec backend php artisan test
 
 # Access Laravel Tinker
 docker compose exec backend php artisan tinker
+
+# Check queue status
+docker compose exec backend php artisan queue:work --once
+docker compose exec backend php artisan queue:failed
+docker compose exec backend php artisan queue:retry all
 ```
 
 ### Frontend Commands
@@ -163,23 +195,64 @@ docker compose exec frontend npm test
 
 # Build for production
 docker compose exec frontend npm run build
+
+# Start development server (if not using Docker)
+cd fe && npm start
+```
+
+### Database Commands
+```bash
+# Connect to PostgreSQL
+docker compose exec postgres psql -U bulkbridge -d bulkbridge
+
+# Check database connection from backend
+docker compose exec backend php artisan tinker
+>>> DB::connection()->getPdo()
+
+# Check import jobs
+>>> App\Models\ImportJob::count()
+
+# Check employees
+>>> App\Models\Employee::count()
+
+# Check import errors
+>>> App\Models\ImportError::count()
 ```
 
 ## 🔍 Monitoring and Debugging
 
+### Service Health Checks
+```bash
+# Check if all services are running
+docker compose ps
+
+# Test application endpoints
+curl http://localhost/health
+curl http://localhost/api/health
+
+# Check service logs
+docker compose logs --tail=50 backend
+docker compose logs --tail=50 frontend
+docker compose logs --tail=50 postgres
+docker compose logs --tail=50 redis
+```
+
 ### Queue Worker Status
 ```bash
 # Check queue worker logs
-docker compose logs queue
+docker compose logs backend | grep "queue"
 
 # Check failed jobs
 docker compose exec backend php artisan queue:failed
 
 # Retry failed jobs
 docker compose exec backend php artisan queue:retry all
+
+# Process one job manually
+docker compose exec backend php artisan queue:work --once
 ```
 
-### Database Queries
+### Database Monitoring
 ```bash
 # Check import jobs
 docker compose exec backend php artisan tinker
@@ -187,18 +260,36 @@ docker compose exec backend php artisan tinker
 
 # Check employee count
 >>> App\Models\Employee::count()
+
+# Check import errors
+>>> App\Models\ImportError::count()
+
+# Check database connection
+>>> DB::connection()->getPdo()
+
+# View recent import jobs
+>>> App\Models\ImportJob::orderBy('created_at', 'desc')->take(5)->get()
 ```
 
 ### Redis Monitoring
 ```bash
 # Connect to Redis
-docker compose exec redis redis-cli -a redis_password
+docker compose exec redis redis-cli
+
+# Check Redis info
+INFO
 
 # Check queue length
 LLEN queues:imports
 
 # Monitor Redis commands
 MONITOR
+
+# Check Redis keys
+KEYS *
+
+# Check import progress
+HGETALL import:progress:*
 ```
 
 ## 📈 Performance Optimization
@@ -230,27 +321,55 @@ docker compose exec backend php artisan tinker
 
 ### Common Issues
 
+#### Services Not Starting
+```bash
+# Check if ports are in use
+lsof -i :80    # Nginx
+lsof -i :5432  # PostgreSQL
+lsof -i :6379  # Redis
+
+# Stop conflicting services
+sudo brew services stop redis  # macOS
+sudo systemctl stop redis      # Linux
+
+# Force restart all services
+docker compose down
+docker compose up -d --force-recreate
+```
+
 #### Queue Worker Not Processing Jobs
 ```bash
 # Check if queue worker is running
-docker compose ps queue
+docker compose ps backend
 
-# Restart queue worker
-docker compose restart queue
+# Check queue worker logs
+docker compose logs backend | grep -i queue
+
+# Restart backend service
+docker compose restart backend
 
 # Check Redis connection
 docker compose exec backend php artisan tinker
 >>> Redis::ping()
+
+# Manually process a job
+docker compose exec backend php artisan queue:work --once
 ```
 
 #### Database Connection Issues
 ```bash
-# Verify PostgreSQL is running
+# Verify PostgreSQL is running locally
 psql -U abedkiloo -d bulkbridge -c "SELECT 1;"
 
 # Check database configuration
 docker compose exec backend php artisan tinker
 >>> config('database.connections.pgsql')
+
+# Test database connection
+>>> DB::connection()->getPdo()
+
+# Run migrations manually
+docker compose exec backend php artisan migrate --force
 ```
 
 #### Frontend Not Loading
@@ -261,15 +380,50 @@ docker compose logs frontend
 # Restart frontend
 docker compose restart frontend
 
-# Check if port 3000 is available
-lsof -i :3000
+# Check if port 80 is available
+lsof -i :80
+
+# Test frontend directly
+curl http://localhost
+```
+
+#### Redis Connection Issues
+```bash
+# Check Redis container
+docker compose logs redis
+
+# Test Redis connection
+docker compose exec redis redis-cli ping
+
+# Check Redis from backend
+docker compose exec backend php artisan tinker
+>>> Redis::ping()
+>>> Redis::info()
+```
+
+#### Import Jobs Not Processing
+```bash
+# Check import job status
+docker compose exec backend php artisan tinker
+>>> App\Models\ImportJob::latest()->first()
+
+# Check for failed jobs
+>>> App\Models\ImportError::count()
+
+# Check queue status
+>>> Redis::llen('queues:imports')
+
+# Manually dispatch a job
+>>> App\Jobs\ProcessBulkImportJob::dispatch('job-uuid-here')
 ```
 
 ### Log Locations
-- **Backend logs**: `be/storage/logs/laravel.log`
-- **Queue logs**: `docker compose logs queue`
+- **Backend logs**: `docker compose logs backend`
 - **Frontend logs**: `docker compose logs frontend`
-- **Database logs**: Check PostgreSQL logs on host system
+- **PostgreSQL logs**: `docker compose logs postgres`
+- **Redis logs**: `docker compose logs redis`
+- **Nginx logs**: `docker compose logs nginx`
+- **Laravel logs**: `docker compose exec backend cat storage/logs/laravel.log`
 
 ## 🔒 Security Considerations
 
@@ -288,19 +442,186 @@ lsof -i :3000
 
 ## 📚 API Documentation
 
-### Import Endpoints
-- `POST /api/import/upload` - Upload CSV file
-- `GET /api/import/jobs` - List all import jobs
-- `GET /api/import/job/{id}/status` - Get job status
-- `POST /api/import/job/{id}/cancel` - Cancel job
-- `POST /api/import/job/{id}/retry` - Retry failed job
+### Import Endpoints (V1 API)
+- `POST /api/v1/imports` - Upload CSV file
+- `GET /api/v1/imports` - List all import jobs
+- `GET /api/v1/imports/{jobId}` - Get job details
+- `GET /api/v1/imports/{jobId}/status` - Get job status
+- `GET /api/v1/imports/{jobId}/stream` - Stream job progress (SSE)
+- `POST /api/v1/imports/{jobId}/retry` - Retry failed job
+- `POST /api/v1/imports/{jobId}/retry-failed` - Retry only failed rows
+- `POST /api/v1/imports/{jobId}/cancel` - Cancel job
 
-### Employee Endpoints
-- `GET /api/employees` - List employees
-- `GET /api/employees/{id}` - Get employee details
-- `POST /api/employees` - Create employee
-- `PUT /api/employees/{id}` - Update employee
-- `DELETE /api/employees/{id}` - Delete employee
+### Health Check Endpoints
+- `GET /health` - Application health check
+- `GET /api/health` - API health check
+
+### Testing API Endpoints
+```bash
+# Test health check
+curl http://localhost/health
+
+# Test API health
+curl http://localhost/api/health
+
+# List import jobs
+curl http://localhost/api/v1/imports
+
+# Get job status
+curl http://localhost/api/v1/imports/{job-id}/status
+
+# Upload a CSV file
+curl -X POST -F "file=@sample.csv" http://localhost/api/v1/imports
+```
+
+## 🧪 Testing the Application
+
+### 1. Basic Functionality Test
+```bash
+# Start the application
+./docker-setup.sh
+
+# Wait for services to be ready (30-60 seconds)
+sleep 60
+
+# Test health endpoints
+curl http://localhost/health
+curl http://localhost/api/health
+
+# Check service status
+docker compose ps
+```
+
+### 2. Database Connection Test
+```bash
+# Test database connection
+docker compose exec backend php artisan tinker
+>>> DB::connection()->getPdo()
+>>> App\Models\ImportJob::count()
+
+# Check if migrations ran
+>>> Schema::hasTable('import_jobs')
+>>> Schema::hasTable('employees')
+>>> Schema::hasTable('import_errors')
+```
+
+### 3. CSV Upload Test
+```bash
+# Create a test CSV file
+cat > test_employees.csv << EOF
+employee_number,first_name,last_name,email,department,salary,currency,country_code,start_date
+EMP001,John,Doe,john.doe@example.com,Engineering,75000,USD,US,2023-01-15
+EMP002,Jane,Smith,jane.smith@example.com,Marketing,65000,USD,US,2023-02-01
+EMP003,Bob,Johnson,bob.johnson@example.com,Sales,55000,USD,US,2023-03-01
+EOF
+
+# Upload the CSV file
+curl -X POST -F "file=@test_employees.csv" http://localhost/api/v1/imports
+
+# Check the response for job ID
+```
+
+### 4. Job Processing Test
+```bash
+# Get the job ID from the upload response, then:
+JOB_ID="your-job-id-here"
+
+# Check job status
+curl http://localhost/api/v1/imports/$JOB_ID/status
+
+# Monitor job progress
+curl http://localhost/api/v1/imports/$JOB_ID/stream
+
+# Check job details
+curl http://localhost/api/v1/imports/$JOB_ID
+```
+
+### 5. Frontend Testing
+```bash
+# Open the application in browser
+open http://localhost  # macOS
+xdg-open http://localhost  # Linux
+start http://localhost  # Windows
+
+# Test the following:
+# 1. Upload page - drag and drop CSV file
+# 2. Monitor page - watch real-time progress
+# 3. Details page - view job history and details
+```
+
+### 6. Queue Processing Test
+```bash
+# Check if queue worker is processing jobs
+docker compose logs backend | grep -i "processing"
+
+# Check Redis queue
+docker compose exec redis redis-cli
+> LLEN queues:imports
+> KEYS *
+
+# Check for failed jobs
+docker compose exec backend php artisan queue:failed
+```
+
+### 7. Error Handling Test
+```bash
+# Create a CSV with invalid data
+cat > invalid_employees.csv << EOF
+employee_number,first_name,last_name,email,department,salary,currency,country_code,start_date
+EMP001,John,,invalid-email,Engineering,invalid-salary,USD,US,invalid-date
+EMP002,,Smith,jane.smith@example.com,,65000,USD,US,2023-02-01
+EOF
+
+# Upload invalid CSV
+curl -X POST -F "file=@invalid_employees.csv" http://localhost/api/v1/imports
+
+# Check for validation errors
+docker compose exec backend php artisan tinker
+>>> App\Models\ImportError::latest()->first()
+```
+
+### 8. Performance Test
+```bash
+# Create a large CSV file (1000+ rows)
+python3 -c "
+import csv
+with open('large_test.csv', 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(['employee_number','first_name','last_name','email','department','salary','currency','country_code','start_date'])
+    for i in range(1000):
+        writer.writerow([f'EMP{i:04d}', f'Employee{i}', f'Last{i}', f'emp{i}@example.com', 'Engineering', 50000 + i, 'USD', 'US', '2023-01-01'])
+"
+
+# Upload large file and monitor performance
+curl -X POST -F "file=@large_test.csv" http://localhost/api/v1/imports
+
+# Monitor system resources
+docker stats
+```
+
+### 9. Retry Functionality Test
+```bash
+# Get a job with failed rows
+JOB_ID="your-failed-job-id"
+
+# Retry failed rows
+curl -X POST http://localhost/api/v1/imports/$JOB_ID/retry-failed
+
+# Check the new retry job
+curl http://localhost/api/v1/imports
+```
+
+### 10. Cleanup Test
+```bash
+# Stop all services
+docker compose down
+
+# Remove volumes (optional - this will delete all data)
+docker compose down -v
+
+# Restart and verify clean state
+./docker-setup.sh
+```
 
 ## 🤝 Contributing
 
