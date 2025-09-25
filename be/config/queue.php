@@ -72,6 +72,15 @@ return [
             'after_commit' => false,
         ],
 
+        'redis-imports' => [
+            'driver' => 'redis',
+            'connection' => 'imports',
+            'queue' => 'imports-high-priority',
+            'retry_after' => 3600,
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+
     ],
 
     /*

@@ -13,20 +13,21 @@ return new class extends Migration
     {
         Schema::create('import_errors', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('import_job_id')->constrained('import_jobs')->onDelete('cascade');
-            $table->foreignId('import_row_id')->nullable()->constrained('import_rows')->onDelete('cascade');
-            $table->integer('row_number')->nullable();
-            $table->enum('error_type', ['validation', 'duplicate', 'system', 'business_logic']);
+            $table->uuid('import_job_id');
+            $table->integer('row_number');
+            $table->json('raw_data');
+            $table->enum('error_type', ['validation', 'duplicate', 'system']);
             $table->string('error_code');
             $table->text('error_message');
-            $table->json('error_context')->nullable();
-            $table->json('raw_data')->nullable();
+            $table->json('error_details')->nullable();
             $table->timestamps();
-            
-            // Indexes for error analysis and reporting
+
+            // Indexes for performance
             $table->index(['import_job_id', 'error_type']);
-            $table->index(['error_type', 'error_code']);
             $table->index(['import_job_id', 'row_number']);
+            
+            // Foreign key constraint
+            $table->foreign('import_job_id')->references('uuid')->on('import_jobs')->onDelete('cascade');
         });
     }
 

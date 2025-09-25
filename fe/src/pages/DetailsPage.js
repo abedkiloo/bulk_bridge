@@ -31,14 +31,15 @@ const DetailsPage = () => {
   const handleJobSelect = async (job) => {
     console.log('handleJobSelect called with:', job);
     // Open job details in a new tab using URL parameters
-    const jobDetailsUrl = `${window.location.origin}?jobId=${job.job_id}`;
+    const jobDetailsUrl = `${window.location.origin}?jobId=${job.id}`;
     window.open(jobDetailsUrl, '_blank');
   };
 
   const handleDispatchJob = async (jobId) => {
     console.log('handleDispatchJob called with:', jobId);
     try {
-      await bulkBridgeAPI.dispatchJob(jobId);
+      // For now, we'll use retry as dispatch functionality
+      await bulkBridgeAPI.retryJob(jobId);
       setError(null);
       fetchJobs(); // Refresh the list
     } catch (err) {
@@ -56,6 +57,18 @@ const DetailsPage = () => {
     } catch (err) {
       setError('Failed to retry job');
       console.error('Error retrying job:', err);
+    }
+  };
+
+  const handleRetryFailedRows = async (jobId) => {
+    console.log('handleRetryFailedRows called with:', jobId);
+    try {
+      await bulkBridgeAPI.retryFailedRows(jobId);
+      setError(null);
+      fetchJobs(); // Refresh the list
+    } catch (err) {
+      setError('Failed to retry failed rows');
+      console.error('Error retrying failed rows:', err);
     }
   };
 
@@ -97,11 +110,18 @@ const DetailsPage = () => {
     if (job.status === 'completed') {
       const successfulRows = job.successful_rows || 0;
       const failedRows = job.failed_rows || 0;
+      const duplicateRows = job.duplicate_rows || 0;
       
-      if (successfulRows > 0 && failedRows === 0) {
+      if (successfulRows > 0 && failedRows === 0 && duplicateRows === 0) {
         return { status: 'success', message: 'All rows imported successfully' };
-      } else if (successfulRows > 0 && failedRows > 0) {
-        return { status: 'partial', message: `${successfulRows} successful, ${failedRows} failed` };
+      } else if (successfulRows > 0 && (failedRows > 0 || duplicateRows > 0)) {
+        return { status: 'partial', message: `${successfulRows} successful, ${failedRows} failed, ${duplicateRows} duplicates` };
+      } else if (successfulRows === 0 && failedRows > 0 && duplicateRows === 0) {
+        return { status: 'failed', message: 'All rows failed validation' };
+      } else if (successfulRows === 0 && failedRows === 0 && duplicateRows > 0) {
+        return { status: 'duplicates', message: 'All rows are duplicates' };
+      } else if (successfulRows === 0 && failedRows > 0 && duplicateRows > 0) {
+        return { status: 'failed', message: `${failedRows} failed, ${duplicateRows} duplicates` };
       } else {
         return { status: 'failed', message: 'All rows failed validation' };
       }
@@ -211,7 +231,7 @@ const DetailsPage = () => {
               {filteredJobs.map((job) => {
                 const jobStatus = getJobStatus(job);
                 return (
-                  <div key={job.job_id} className="job-row">
+                  <div key={job.id} className="job-row">
                     <div className="row-cell filename">
                       <div className="filename-text" title={job.original_filename}>
                         {job.original_filename}
@@ -301,7 +321,7 @@ const DetailsPage = () => {
                       <div className="action-buttons">
                         {job.status === 'pending' && (
                           <button 
-                            onClick={() => handleDispatchJob(job.job_id)}
+                            onClick={() => handleDispatchJob(job.id)}
                             className="action-btn dispatch"
                             title="Dispatch job to queue"
                           >
@@ -310,16 +330,25 @@ const DetailsPage = () => {
                         )}
                         {job.status === 'failed' && (
                           <button 
-                            onClick={() => handleRetryJob(job.job_id)}
+                            onClick={() => handleRetryJob(job.id)}
                             className="action-btn retry"
                             title="Retry job"
                           >
                             Retry
                           </button>
                         )}
+                        {(job.status === 'completed' || job.status === 'failed') && (job.failed_rows > 0 || job.duplicate_rows > 0) && (
+                          <button 
+                            onClick={() => handleRetryFailedRows(job.id)}
+                            className="action-btn retry-failed"
+                            title="Retry failed rows and duplicates"
+                          >
+                            Retry Failed
+                          </button>
+                        )}
                         {(job.status === 'pending' || job.status === 'processing') && (
                           <button 
-                            onClick={() => handleCancelJob(job.job_id)}
+                            onClick={() => handleCancelJob(job.id)}
                             className="action-btn cancel"
                             title="Cancel job"
                           >
@@ -330,7 +359,7 @@ const DetailsPage = () => {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            console.log('Details button clicked for job:', job.job_id);
+                            console.log('Details button clicked for job:', job.id);
                             handleJobSelect(job);
                           }}
                           className="action-btn view"

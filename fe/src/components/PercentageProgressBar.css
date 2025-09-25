@@ -1,0 +1,53 @@
+.percentage-progress-container {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
+  text-align: center;
+}
+
+.progress-percentage-only {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #28a745;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  line-height: 1;
+}
+
+
+/* Status-specific colors */
+.percentage-progress-container[data-status="completed"] .progress-percentage-only {
+  color: #28a745;
+}
+
+.percentage-progress-container[data-status="failed"] .progress-percentage-only {
+  color: #dc3545;
+}
+
+.percentage-progress-container[data-status="processing"] .progress-percentage-only {
+  color: #28a745;
+}
+
+.percentage-progress-container[data-status="pending"] .progress-percentage-only {
+  color: #6c757d;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .percentage-progress-container {
+    padding: 15px;
+    margin: 15px 0;
+  }
+  
+  .progress-percentage-only {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .progress-percentage-only {
+    font-size: 2rem;
+  }
+}

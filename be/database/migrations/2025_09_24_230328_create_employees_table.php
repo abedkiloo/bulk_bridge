@@ -13,23 +13,26 @@ return new class extends Migration
     {
         Schema::create('employees', function (Blueprint $table) {
             $table->id();
-            $table->string('employee_number')->unique()->index();
+            $table->string('employee_number')->unique();
             $table->string('first_name');
             $table->string('last_name');
-            $table->string('email')->unique()->index();
+            $table->string('email')->unique();
             $table->string('department');
             $table->decimal('salary', 15, 2);
             $table->string('currency', 3);
             $table->string('country_code', 2);
             $table->date('start_date');
-            $table->timestamp('last_imported_at')->nullable();
-            $table->string('last_import_job_id')->nullable();
+            $table->uuid('import_job_id')->nullable();
             $table->timestamps();
+
+            // Indexes for performance
+            $table->index(['employee_number']);
+            $table->index(['email']);
+            $table->index(['department', 'salary']);
+            $table->index(['import_job_id']);
             
-            // Composite indexes for performance
-            $table->index(['email', 'employee_number']);
-            $table->index(['department', 'country_code']);
-            $table->index(['start_date', 'salary']);
+            // Foreign key constraint
+            $table->foreign('import_job_id')->references('uuid')->on('import_jobs')->onDelete('set null');
         });
     }
 

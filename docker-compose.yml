@@ -1,111 +1,105 @@
-services:
-  # Using local PostgreSQL database (no Docker container needed)
+version: '3.8'
 
-  # Redis Cache
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: bulkbridge_postgres
+    environment:
+      POSTGRES_DB: bulkbridge
+      POSTGRES_USER: bulkbridge
+      POSTGRES_PASSWORD: bulkbridge_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./be/database/init:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - bulkbridge_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bulkbridge -d bulkbridge"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for caching and queues
   redis:
     image: redis:7-alpine
-    container_name: bulkbridge_redis_dev
-    restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass redis_password
-    volumes:
-      - redis_dev_data:/data
+    container_name: bulkbridge_redis
     ports:
-      - "6380:6379"
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
     networks:
-      - bulkbridge_dev_network
+      - bulkbridge_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Laravel Backend (Development)
+  # Backend Laravel Application
   backend:
     build:
       context: ./be
       dockerfile: Dockerfile
-    container_name: bulkbridge_backend_dev
-    restart: unless-stopped
-    environment:
-      - APP_ENV=local
-      - APP_DEBUG=true
-      - APP_KEY=base64:your-app-key-here
-      - DB_CONNECTION=pgsql
-      - DB_HOST=host.docker.internal
-      - DB_PORT=5432
-      - DB_DATABASE=bulkbridge
-      - DB_USERNAME=${DB_USERNAME:-abedkiloo}
-      - DB_PASSWORD=${DB_PASSWORD:-}
-      - REDIS_HOST=redis
-      - REDIS_PASSWORD=redis_password
-      - REDIS_PORT=6379
-      - QUEUE_CONNECTION=redis
-      - CACHE_DRIVER=redis
-      - SESSION_DRIVER=redis
+    container_name: bulkbridge_backend
+    env_file:
+      - docker.env
     volumes:
       - ./be:/var/www/html
-      - backend_dev_storage:/var/www/html/storage
+      - backend_storage:/var/www/html/storage
     ports:
       - "8000:8000"
     depends_on:
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
-      - bulkbridge_dev_network
-
-  # Queue Worker (Development)
-  queue:
-    build:
-      context: ./be
-      dockerfile: Dockerfile
-    container_name: bulkbridge_queue_dev
+      - bulkbridge_network
     restart: unless-stopped
-    command: php artisan queue:work --queue=imports --timeout=1800 --tries=1 --max-jobs=10 --max-time=300 --verbose --sleep=3
-    environment:
-      - APP_ENV=local
-      - APP_DEBUG=true
-      - APP_KEY=base64:your-app-key-here
-      - DB_CONNECTION=pgsql
-      - DB_HOST=host.docker.internal
-      - DB_PORT=5432
-      - DB_DATABASE=bulkbridge
-      - DB_USERNAME=${DB_USERNAME:-abedkiloo}
-      - DB_PASSWORD=${DB_PASSWORD:-}
-      - REDIS_HOST=redis
-      - REDIS_PASSWORD=redis_password
-      - REDIS_PORT=6379
-      - QUEUE_CONNECTION=redis
-      - CACHE_DRIVER=redis
-      - SESSION_DRIVER=redis
-    volumes:
-      - ./be:/var/www/html
-      - backend_dev_storage:/var/www/html/storage
-    depends_on:
-      - redis
-      - backend
-    networks:
-      - bulkbridge_dev_network
 
-  # React Frontend (Development)
+  # Frontend React Application
   frontend:
     build:
       context: ./fe
       dockerfile: Dockerfile
-      target: development
-    container_name: bulkbridge_frontend_dev
-    restart: unless-stopped
-    environment:
-      - REACT_APP_API_URL=http://localhost:8000/api
-    volumes:
-      - ./fe:/app
-      - /app/node_modules
+    container_name: bulkbridge_frontend
     ports:
       - "3000:3000"
     depends_on:
       - backend
     networks:
-      - bulkbridge_dev_network
+      - bulkbridge_network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: bulkbridge_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/sites:/etc/nginx/sites-available
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - bulkbridge_network
+    restart: unless-stopped
 
 volumes:
-  redis_dev_data:
+  postgres_data:
     driver: local
-  backend_dev_storage:
+  redis_data:
+    driver: local
+  backend_storage:
     driver: local
 
 networks:
-  bulkbridge_dev_network:
+  bulkbridge_network:
     driver: bridge

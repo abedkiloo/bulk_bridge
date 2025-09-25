@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class ImportError extends Model
 {
@@ -12,205 +12,83 @@ class ImportError extends Model
 
     protected $fillable = [
         'import_job_id',
-        'import_row_id',
         'row_number',
+        'raw_data',
         'error_type',
         'error_code',
         'error_message',
-        'error_context',
-        'raw_data',
+        'error_details',
     ];
 
     protected $casts = [
-        'error_context' => 'array',
         'raw_data' => 'array',
+        'error_details' => 'array',
     ];
 
-    /**
-     * Get the import job that owns this error
-     */
+    // Relationships
     public function importJob(): BelongsTo
     {
-        return $this->belongsTo(ImportJob::class);
+        return $this->belongsTo(ImportJob::class, 'import_job_id', 'uuid');
     }
 
-    /**
-     * Get the import row that owns this error
-     */
-    public function importRow(): BelongsTo
+    // Scopes
+    public function scopeByType($query, string $type)
     {
-        return $this->belongsTo(ImportRow::class);
+        return $query->where('error_type', $type);
     }
 
-    /**
-     * Create a validation error
-     */
-    public static function createValidationError(
-        int $importJobId,
-        ?int $importRowId,
-        ?int $rowNumber,
-        string $errorCode,
-        string $errorMessage,
-        array $errorContext = [],
-        array $rawData = []
-    ): self {
-        return self::create([
-            'import_job_id' => $importJobId,
-            'import_row_id' => $importRowId,
-            'row_number' => $rowNumber,
-            'error_type' => 'validation',
-            'error_code' => $errorCode,
-            'error_message' => $errorMessage,
-            'error_context' => $errorContext,
-            'raw_data' => $rawData,
-        ]);
-    }
-
-    /**
-     * Create a duplicate error
-     */
-    public static function createDuplicateError(
-        int $importJobId,
-        ?int $importRowId,
-        ?int $rowNumber,
-        string $errorMessage,
-        array $rawData = []
-    ): self {
-        return self::create([
-            'import_job_id' => $importJobId,
-            'import_row_id' => $importRowId,
-            'row_number' => $rowNumber,
-            'error_type' => 'duplicate',
-            'error_code' => 'DUPLICATE_EMPLOYEE',
-            'error_message' => $errorMessage,
-            'raw_data' => $rawData,
-        ]);
-    }
-
-    /**
-     * Create a system error
-     */
-    public static function createSystemError(
-        int $importJobId,
-        ?int $importRowId,
-        ?int $rowNumber,
-        string $errorCode,
-        string $errorMessage,
-        array $errorContext = [],
-        array $rawData = []
-    ): self {
-        return self::create([
-            'import_job_id' => $importJobId,
-            'import_row_id' => $importRowId,
-            'row_number' => $rowNumber,
-            'error_type' => 'system',
-            'error_code' => $errorCode,
-            'error_message' => $errorMessage,
-            'error_context' => $errorContext,
-            'raw_data' => $rawData,
-        ]);
-    }
-
-    /**
-     * Create a business logic error
-     */
-    public static function createBusinessLogicError(
-        int $importJobId,
-        ?int $importRowId,
-        ?int $rowNumber,
-        string $errorCode,
-        string $errorMessage,
-        array $errorContext = [],
-        array $rawData = []
-    ): self {
-        return self::create([
-            'import_job_id' => $importJobId,
-            'import_row_id' => $importRowId,
-            'row_number' => $rowNumber,
-            'error_type' => 'business_logic',
-            'error_code' => $errorCode,
-            'error_message' => $errorMessage,
-            'error_context' => $errorContext,
-            'raw_data' => $rawData,
-        ]);
-    }
-
-    /**
-     * Get formatted error message with context
-     */
-    public function getFormattedMessage(): string
-    {
-        $message = $this->error_message;
-        
-        if (!empty($this->error_context)) {
-            $context = json_encode($this->error_context, JSON_PRETTY_PRINT);
-            $message .= "\nContext: {$context}";
-        }
-        
-        if ($this->row_number) {
-            $message = "Row {$this->row_number}: {$message}";
-        }
-        
-        return $message;
-    }
-
-    /**
-     * Scope for validation errors
-     */
-    public function scopeValidation($query)
+    public function scopeValidationErrors($query)
     {
         return $query->where('error_type', 'validation');
     }
 
-    /**
-     * Scope for duplicate errors
-     */
-    public function scopeDuplicate($query)
+    public function scopeDuplicateErrors($query)
     {
         return $query->where('error_type', 'duplicate');
     }
 
-    /**
-     * Scope for system errors
-     */
-    public function scopeSystem($query)
+    public function scopeSystemErrors($query)
     {
         return $query->where('error_type', 'system');
     }
 
-    /**
-     * Scope for business logic errors
-     */
-    public function scopeBusinessLogic($query)
+    // Static factory methods
+    public static function createValidationError(string $importJobId, int $rowNumber, array $rawData, array $errors): self
     {
-        return $query->where('error_type', 'business_logic');
+        return self::create([
+            'import_job_id' => $importJobId,
+            'row_number' => $rowNumber,
+            'raw_data' => $rawData,
+            'error_type' => 'validation',
+            'error_code' => 'VALIDATION_FAILED',
+            'error_message' => implode('; ', \Illuminate\Support\Arr::flatten($errors)),
+            'error_details' => $errors,
+        ]);
     }
 
-    /**
-     * Scope for errors by code
-     */
-    public function scopeByCode($query, string $errorCode)
+    public static function createDuplicateError(string $importJobId, int $rowNumber, array $rawData, string $reason = 'Employee already exists'): self
     {
-        return $query->where('error_code', $errorCode);
+        return self::create([
+            'import_job_id' => $importJobId,
+            'row_number' => $rowNumber,
+            'raw_data' => $rawData,
+            'error_type' => 'duplicate',
+            'error_code' => 'DUPLICATE_EMPLOYEE',
+            'error_message' => $reason,
+            'error_details' => ['reason' => $reason],
+        ]);
     }
 
-    /**
-     * Get error statistics for a job
-     */
-    public static function getErrorStatistics(int $importJobId): array
+    public static function createSystemError(string $importJobId, int $rowNumber, array $rawData, string $error): self
     {
-        $errors = self::where('import_job_id', $importJobId)
-            ->selectRaw('error_type, error_code, COUNT(*) as count')
-            ->groupBy('error_type', 'error_code')
-            ->get();
-
-        $statistics = [
-            'total_errors' => $errors->sum('count'),
-            'by_type' => $errors->groupBy('error_type')->map->sum('count'),
-            'by_code' => $errors->groupBy('error_code')->map->sum('count'),
-            'detailed' => $errors->toArray(),
-        ];
-
-        return $statistics;
+        return self::create([
+            'import_job_id' => $importJobId,
+            'row_number' => $rowNumber,
+            'raw_data' => $rawData,
+            'error_type' => 'system',
+            'error_code' => 'SYSTEM_ERROR',
+            'error_message' => $error,
+            'error_details' => ['error' => $error],
+        ]);
     }
 }

@@ -2,262 +2,228 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Carbon\Carbon;
 
 class ImportJob extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'job_id',
-        'filename',
+        'uuid',
         'original_filename',
         'file_path',
+        'file_size',
         'total_rows',
         'processed_rows',
         'successful_rows',
         'failed_rows',
         'duplicate_rows',
         'status',
-        'metadata',
         'error_message',
+        'progress_percentage',
         'started_at',
         'completed_at',
     ];
 
     protected $casts = [
-        'metadata' => 'array',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
+        'progress_percentage' => 'decimal:2',
+        'file_size' => 'integer',
+        'total_rows' => 'integer',
+        'processed_rows' => 'integer',
+        'successful_rows' => 'integer',
+        'failed_rows' => 'integer',
+        'duplicate_rows' => 'integer',
     ];
 
     protected $dates = [
         'started_at',
         'completed_at',
+        'created_at',
+        'updated_at',
     ];
 
-    /**
-     * Boot the model
-     */
-    protected static function boot()
-    {
-        parent::boot();
-        
-        static::creating(function ($model) {
-            if (empty($model->job_id)) {
-                $model->job_id = Str::uuid();
-            }
-        });
-    }
-
-    /**
-     * Get import rows for this job
-     */
-    public function importRows(): HasMany
-    {
-        return $this->hasMany(ImportRow::class);
-    }
-
-    /**
-     * Get import errors for this job
-     */
-    public function importErrors(): HasMany
-    {
-        return $this->hasMany(ImportError::class);
-    }
-
-    /**
-     * Get employees imported in this job
-     */
+    // Relationships
     public function employees(): HasMany
     {
-        return $this->hasMany(Employee::class, 'last_import_job_id', 'job_id');
+        return $this->hasMany(Employee::class, 'import_job_id', 'uuid');
     }
 
-    /**
-     * Get progress percentage
-     */
-    public function getProgressPercentageAttribute(): float
+    public function importErrors(): HasMany
     {
-        if ($this->total_rows === 0) {
-            return 0;
-        }
-        
-        return round(($this->processed_rows / $this->total_rows) * 100, 2);
+        return $this->hasMany(ImportError::class, 'import_job_id', 'uuid');
     }
 
-    /**
-     * Get success rate percentage
-     */
-    public function getSuccessRateAttribute(): float
+    public function importRows(): HasMany
     {
-        if ($this->processed_rows === 0) {
-            return 0;
-        }
-        
-        return round(($this->successful_rows / $this->processed_rows) * 100, 2);
+        return $this->hasMany(ImportRow::class, 'import_job_id', 'uuid');
     }
 
-    /**
-     * Check if job is completed
-     */
-    public function isCompleted(): bool
+    // Scopes
+    public function scopePending($query)
     {
-        return in_array($this->status, ['completed', 'failed', 'cancelled']);
+        return $query->where('status', 'pending');
     }
 
-    /**
-     * Check if job is processing
-     */
-    public function isProcessing(): bool
+    public function scopeProcessing($query)
     {
-        return $this->status === 'processing';
+        return $query->where('status', 'processing');
     }
 
-    /**
-     * Mark job as started
-     */
-    public function markAsStarted(): void
-    {
-        $this->update([
-            'status' => 'processing',
-            'started_at' => now(),
-        ]);
-        
-        $this->clearProgressCache();
-    }
-
-    /**
-     * Mark job as completed
-     */
-    public function markAsCompleted(): void
-    {
-        $this->update([
-            'status' => 'completed',
-            'completed_at' => now(),
-        ]);
-        
-        $this->clearProgressCache();
-    }
-
-    /**
-     * Mark job as failed
-     */
-    public function markAsFailed(?string $errorMessage = null): void
-    {
-        $this->update([
-            'status' => 'failed',
-            'completed_at' => now(),
-            'error_message' => $errorMessage,
-        ]);
-        
-        $this->clearProgressCache();
-    }
-
-    /**
-     * Update progress counters
-     */
-    public function updateProgress(): void
-    {
-        $this->processed_rows = $this->importRows()->count();
-        $this->successful_rows = $this->importRows()->where('status', 'success')->count();
-        $this->failed_rows = $this->importRows()->whereIn('status', ['failed', 'skipped'])->count();
-        $this->duplicate_rows = $this->importRows()->where('status', 'duplicate')->count();
-        
-        $this->save();
-        $this->clearProgressCache();
-    }
-
-    /**
-     * Get cached progress data for real-time updates
-     */
-    public function getCachedProgress(): array
-    {
-        $cacheKey = "import_job_progress_{$this->job_id}";
-        
-        return Cache::remember($cacheKey, 30, function () {
-            return [
-                'job_id' => $this->job_id,
-                'status' => $this->status,
-                'total_rows' => $this->total_rows,
-                'processed_rows' => $this->processed_rows,
-                'successful_rows' => $this->successful_rows,
-                'failed_rows' => $this->failed_rows,
-                'duplicate_rows' => $this->duplicate_rows,
-                'progress_percentage' => $this->progress_percentage,
-                'success_rate' => $this->success_rate,
-                'started_at' => $this->started_at?->toISOString(),
-                'completed_at' => $this->completed_at?->toISOString(),
-                'updated_at' => $this->updated_at->toISOString(),
-            ];
-        });
-    }
-
-    /**
-     * Clear progress cache
-     */
-    public function clearProgressCache(): void
-    {
-        $cacheKey = "import_job_progress_{$this->job_id}";
-        Cache::forget($cacheKey);
-    }
-
-    /**
-     * Scope for active jobs
-     */
-    public function scopeActive($query)
-    {
-        return $query->whereIn('status', ['pending', 'processing']);
-    }
-
-    /**
-     * Scope for completed jobs
-     */
     public function scopeCompleted($query)
     {
         return $query->where('status', 'completed');
     }
 
-    /**
-     * Scope for failed jobs
-     */
     public function scopeFailed($query)
     {
         return $query->where('status', 'failed');
     }
 
-    /**
-     * Get job statistics
-     */
-    public function getStatistics(): array
+    public function scopeActive($query)
     {
-        return [
-            'total_rows' => $this->total_rows,
-            'processed_rows' => $this->processed_rows,
-            'successful_rows' => $this->successful_rows,
-            'failed_rows' => $this->failed_rows,
-            'duplicate_rows' => $this->duplicate_rows,
-            'progress_percentage' => $this->progress_percentage,
-            'success_rate' => $this->success_rate,
-            'error_count' => $this->importErrors()->count(),
-            'processing_time' => $this->getProcessingTime(),
-        ];
+        return $query->whereIn('status', ['pending', 'processing']);
     }
 
-    /**
-     * Get processing time in seconds
-     */
-    public function getProcessingTime(): ?int
+    // Accessors
+    public function getProgressPercentageAttribute($value)
     {
-        if (!$this->started_at) {
-            return null;
+        if ($this->total_rows > 0) {
+            return round(($this->processed_rows / $this->total_rows) * 100, 2);
+        }
+        return 0;
+    }
+
+    public function getFileSizeFormattedAttribute()
+    {
+        $bytes = $this->file_size;
+        $units = ['B', 'KB', 'MB', 'GB'];
+        
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+            $bytes /= 1024;
         }
         
-        $endTime = $this->completed_at ?? now();
-        return $endTime->diffInSeconds($this->started_at);
+        return round($bytes, 2) . ' ' . $units[$i];
+    }
+
+    public function getDurationAttribute()
+    {
+        if ($this->started_at && $this->completed_at) {
+            return $this->started_at->diffInSeconds($this->completed_at);
+        }
+        return null;
+    }
+
+    // Status checks
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isProcessing(): bool
+    {
+        return $this->status === 'processing';
+    }
+
+    public function isCompleted(): bool
+    {
+        return $this->status === 'completed';
+    }
+
+    public function isFailed(): bool
+    {
+        return $this->status === 'failed';
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
+    }
+
+    public function isFinished(): bool
+    {
+        return in_array($this->status, ['completed', 'failed', 'cancelled']);
+    }
+
+    // Business logic methods
+    public function startProcessing(): void
+    {
+        if (!$this->isPending()) {
+            throw new \DomainException('Import job can only be started from pending status');
+        }
+
+        $this->update([
+            'status' => 'processing',
+            'started_at' => now(),
+        ]);
+    }
+
+    public function updateProgress(int $processed, int $successful, int $failed, int $duplicates): void
+    {
+        if (!$this->isProcessing()) {
+            throw new \DomainException('Progress can only be updated for processing jobs');
+        }
+
+        $progressPercentage = $this->total_rows > 0 ? round(($processed / $this->total_rows) * 100, 2) : 0;
+
+        $this->update([
+            'processed_rows' => $processed,
+            'successful_rows' => $successful,
+            'failed_rows' => $failed,
+            'duplicate_rows' => $duplicates,
+            'progress_percentage' => $progressPercentage,
+        ]);
+    }
+
+    public function complete(): void
+    {
+        if (!$this->isProcessing()) {
+            throw new \DomainException('Only processing jobs can be completed');
+        }
+
+        $this->update([
+            'status' => 'completed',
+            'completed_at' => now(),
+            'progress_percentage' => 100.00,
+        ]);
+    }
+
+    public function fail(string $errorMessage): void
+    {
+        $this->update([
+            'status' => 'failed',
+            'error_message' => $errorMessage,
+            'completed_at' => now(),
+        ]);
+    }
+
+    public function cancel(): void
+    {
+        if ($this->isFinished()) {
+            throw new \DomainException('Cannot cancel finished jobs');
+        }
+
+        $this->update([
+            'status' => 'cancelled',
+            'completed_at' => now(),
+        ]);
+    }
+
+    // Static factory methods
+    public static function createFromUpload(string $uuid, string $filename, string $filePath, int $fileSize, int $totalRows): self
+    {
+        return self::create([
+            'uuid' => $uuid,
+            'original_filename' => $filename,
+            'file_path' => $filePath,
+            'file_size' => $fileSize,
+            'total_rows' => $totalRows,
+            'status' => 'pending',
+        ]);
     }
 }

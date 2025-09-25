@@ -11,7 +11,7 @@ const MonitorPage = ({ currentJob, onJobSelect }) => {
 
   useEffect(() => {
     if (currentJob) {
-      setSelectedJobId(currentJob.job_id);
+      setSelectedJobId(currentJob.id);
     }
   }, [currentJob]);
 
@@ -48,7 +48,7 @@ const MonitorPage = ({ currentJob, onJobSelect }) => {
   };
 
   const handleJobSelect = (job) => {
-    setSelectedJobId(job.job_id);
+    setSelectedJobId(job.id);
     if (onJobSelect) {
       onJobSelect(job);
     }
@@ -133,8 +133,8 @@ const MonitorPage = ({ currentJob, onJobSelect }) => {
             ) : (
               jobs.map((job) => (
                 <div
-                  key={job.job_id}
-                  className={`job-item ${selectedJobId === job.job_id ? 'selected' : ''}`}
+                  key={job.id}
+                  className={`job-item ${selectedJobId === job.id ? 'selected' : ''}`}
                   onClick={() => handleJobSelect(job)}
                 >
                   <div className="job-header">

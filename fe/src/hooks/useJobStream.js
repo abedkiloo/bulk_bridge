@@ -3,7 +3,7 @@ import { bulkBridgeAPI } from '../services/api';
 
 const useJobStream = (jobId, options = {}) => {
   const {
-    pollInterval = 3000, // Poll every 3 seconds (less aggressive)
+    pollInterval = 2000, // Poll every 2 seconds for more responsive updates
   } = options;
 
   const [jobData, setJobData] = useState(null);
@@ -25,8 +25,8 @@ const useJobStream = (jobId, options = {}) => {
     try {
       const response = await bulkBridgeAPI.getJobStatus(jobId);
       
-      if (response.data.success) {
-        const newJobData = response.data.data;
+      if (response.data) {
+        const newJobData = response.data;
         
         // Only update state if data has actually changed
         setJobData(prevData => {
@@ -52,12 +52,12 @@ const useJobStream = (jobId, options = {}) => {
         if (newJobData.status === 'completed' || newJobData.status === 'failed') {
           setIsConnected(false);
           if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
+            clearTimeout(pollIntervalRef.current);
             pollIntervalRef.current = null;
           }
         }
       } else {
-        setError(response.data.message || 'Failed to fetch job status');
+        setError('Failed to fetch job status');
         setIsConnected(false);
       }
     } catch (err) {
@@ -83,19 +83,29 @@ const useJobStream = (jobId, options = {}) => {
       pollJobStatusRef.current();
     }
     
-    // Set up polling interval
-    pollIntervalRef.current = setInterval(() => {
+    // Set up polling interval with dynamic frequency
+    const poll = () => {
       if (isActiveRef.current && pollJobStatusRef.current) {
         pollJobStatusRef.current();
+        
+        // Adjust polling frequency based on job status
+        const currentInterval = jobData?.status === 'processing' ? 1000 : pollInterval;
+        
+        if (pollIntervalRef.current) {
+          clearTimeout(pollIntervalRef.current);
+        }
+        
+        pollIntervalRef.current = setTimeout(poll, currentInterval);
       }
-    }, pollInterval);
+    };
     
+    pollIntervalRef.current = setTimeout(poll, pollInterval);
     setIsConnected(true);
-  }, [jobId, pollInterval]);
+  }, [jobId, pollInterval, jobData?.status]);
 
   const stopPolling = useCallback(() => {
     if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
+      clearTimeout(pollIntervalRef.current);
       pollIntervalRef.current = null;
     }
     setIsConnected(false);
@@ -121,12 +131,12 @@ const useJobStream = (jobId, options = {}) => {
 
     try {
       const response = await bulkBridgeAPI.getJobStatus(jobId);
-      if (response.data.success) {
-        setJobData(response.data.data);
+      if (response.data) {
+        setJobData(response.data);
         setLastUpdate(new Date().toISOString());
         setError(null);
       } else {
-        setError(response.data.message);
+        setError('Failed to fetch job status');
       }
     } catch (err) {
       setError('Network error: ' + err.message);

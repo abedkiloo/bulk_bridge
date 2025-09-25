@@ -1,5 +1,6 @@
 import React, { useState, useEffect, memo } from 'react';
-import ProgressBar from './ProgressBar';
+import ProgressTicker from './ProgressTicker';
+import PercentageProgressBar from './PercentageProgressBar';
 import useJobStream from '../hooks/useJobStream';
 import './JobStatus.css';
 
@@ -85,9 +86,9 @@ const JobStatus = memo(({ jobId, onJobComplete }) => {
     <div className="job-status-container">
       <div className="job-header">
         <div className="job-title">
-          <h3>Import Job: {job.filename}</h3>
-          <span className={`job-status-badge status-${job.status}`}>
-            {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+          <h3>Import Job: {job.original_filename || 'Unknown File'}</h3>
+          <span className={`job-status-badge status-${job.status || 'unknown'}`}>
+            {job.status ? job.status.charAt(0).toUpperCase() + job.status.slice(1) : 'Unknown'}
           </span>
         </div>
         <div className="job-actions">
@@ -119,7 +120,7 @@ const JobStatus = memo(({ jobId, onJobComplete }) => {
         <div className="detail-grid">
           <div className="detail-item">
             <label>Job ID:</label>
-            <span className="job-id">{job.job_id}</span>
+            <span className="job-id">{job.id || job.job_id || 'N/A'}</span>
           </div>
           <div className="detail-item">
             <label>Original Filename:</label>
@@ -144,14 +145,22 @@ const JobStatus = memo(({ jobId, onJobComplete }) => {
         </div>
       </div>
 
-      <ProgressBar
+      {/* Percentage Progress Bar - Similar to left pane */}
+      <PercentageProgressBar
         totalRows={job.total_rows || 0}
         processedRows={job.processed_rows || 0}
-        successfulRows={job.successful_rows || 0}
-        failedRows={job.failed_rows || 0}
         status={job.status || 'pending'}
-        showDetails={true}
+        showLabel={true}
       />
+
+      {/* Real-time Progress Ticker - Only show for processing jobs */}
+      {job.status === 'processing' && (
+        <ProgressTicker
+          jobData={job}
+          isConnected={isConnected}
+          lastUpdate={lastUpdate}
+        />
+      )}
 
       {job.error_message && (
         <div className="error-message">

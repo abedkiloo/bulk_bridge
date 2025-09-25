@@ -14,9 +14,9 @@ export const bulkBridgeAPI = {
   // Upload CSV file and start import job
   uploadFile: async (file, onUploadProgress) => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('csv', file);
     
-    return api.post('/import/upload', formData, {
+    return api.post('/v1/imports', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -29,46 +29,55 @@ export const bulkBridgeAPI = {
     });
   },
 
-  // Get import job status via Redis
+  // Get import job status
   getJobStatus: async (jobId) => {
-    return api.get(`/import/job/${jobId}/status`);
+    return api.get(`/v1/imports/${jobId}/status`);
   },
 
   // Get all import jobs
-  getJobs: async () => {
-    return api.get('/import/jobs');
+  getJobs: async (limit = 50, offset = 0) => {
+    return api.get('/v1/imports', {
+      params: { limit, offset }
+    });
   },
 
-  // Get import job details with rows
+  // Get import job details
   getJobDetails: async (jobId) => {
-    return api.get(`/import/job/${jobId}/details`);
+    return api.get(`/v1/imports/${jobId}/details`);
   },
 
-  // Get import rows for a job
-  getImportRows: async (jobId, page = 1, limit = 50) => {
-    return api.get(`/import/job/${jobId}/rows`, {
-      params: { page, limit }
+  // Get import job basic info
+  getJob: async (jobId) => {
+    return api.get(`/v1/imports/${jobId}`);
+  },
+
+  // Get imported employees for a job
+  getImportEmployees: async (jobId, limit = 100, offset = 0) => {
+    return api.get(`/v1/imports/${jobId}/employees`, {
+      params: { limit, offset }
     });
   },
 
   // Get import errors for a job
-  getImportErrors: async (jobId) => {
-    return api.get(`/import/job/${jobId}/errors`);
+  getImportErrors: async (jobId, limit = 100, offset = 0) => {
+    return api.get(`/v1/imports/${jobId}/errors`, {
+      params: { limit, offset }
+    });
   },
 
   // Cancel an import job
   cancelJob: async (jobId) => {
-    return api.post(`/import/job/${jobId}/cancel`);
+    return api.post(`/v1/imports/${jobId}/cancel`);
   },
 
   // Retry a failed job
   retryJob: async (jobId) => {
-    return api.post(`/import/job/${jobId}/retry`);
+    return api.post(`/v1/imports/${jobId}/retry`);
   },
 
-  // Dispatch a pending job to the queue
-  dispatchJob: async (jobId) => {
-    return api.post(`/import/job/${jobId}/dispatch`);
+  // Retry only failed rows from a job
+  retryFailedRows: async (jobId) => {
+    return api.post(`/v1/imports/${jobId}/retry-failed`);
   },
 };
 

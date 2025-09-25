@@ -22,13 +22,13 @@ const UploadPage = ({ onUploadSuccess }) => {
         setUploadProgress(progress);
       });
       
-      if (response.data.success) {
+      if (response.data.data) {
         setUploadSuccess(true);
         setUploadProgress(100);
         
         // Notify parent component
         if (onUploadSuccess) {
-          onUploadSuccess(response.data.job);
+          onUploadSuccess(response.data.data);
         }
       } else {
         setUploadError(response.data.message || 'Upload failed');

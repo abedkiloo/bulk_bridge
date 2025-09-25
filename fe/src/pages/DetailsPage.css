@@ -414,6 +414,15 @@
   background: #0056b3;
 }
 
+.action-btn.retry-failed {
+  background: #ffc107;
+  color: #212529;
+}
+
+.action-btn.retry-failed:hover {
+  background: #e0a800;
+}
+
 /* Job Details Section */
 .job-details-section {
   background: white;

@@ -1,66 +1,51 @@
-# Simple Laravel server Dockerfile
-FROM php:8.2-cli-alpine
-
-# Install system dependencies
-RUN apk add --no-cache \
-    git \
-    curl \
-    libpng-dev \
-    libxml2-dev \
-    zip \
-    unzip \
-    oniguruma-dev \
-    libzip-dev \
-    postgresql-dev \
-    redis
-
-# Install PHP extensions
-RUN docker-php-ext-install \
-    pdo \
-    pdo_pgsql \
-    mbstring \
-    exif \
-    pcntl \
-    bcmath \
-    zip
-
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+FROM php:8.4-fpm
 
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy composer files
-COPY composer.json composer.lock ./
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    libzip-dev \
+    zip \
+    unzip \
+    nodejs \
+    npm \
+    supervisor \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
-# Install PHP dependencies (without scripts first)
-RUN composer install --no-scripts --no-autoloader --no-interaction
+# Install Redis extension
+RUN pecl install redis && docker-php-ext-enable redis
 
-# Copy application code
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Copy application files
 COPY . .
 
-# Create .env file if it doesn't exist
-RUN cp .env.example .env || true
+# Install PHP dependencies
+RUN composer install --no-dev --optimize-autoloader
 
-# Run composer autoloader
-RUN composer dump-autoload --optimize --no-interaction
-
-# Generate app key
-RUN php artisan key:generate --no-interaction || true
+# Install Node.js dependencies and build assets
+RUN npm install && npm run build
 
 # Set permissions
-RUN chmod -R 755 storage bootstrap/cache
-RUN chmod +x start-queue.sh || true
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html/storage \
+    && chmod -R 755 /var/www/html/bootstrap/cache
 
-# Create storage directories
-RUN mkdir -p storage/app/public \
-    && mkdir -p storage/framework/cache \
-    && mkdir -p storage/framework/sessions \
-    && mkdir -p storage/framework/views \
-    && mkdir -p storage/logs
+# Create supervisor configuration
+RUN mkdir -p /etc/supervisor/conf.d
+
+# Copy supervisor configuration
+COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Expose port
 EXPOSE 8000
 
-# Start Laravel development server
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+# Start supervisor
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

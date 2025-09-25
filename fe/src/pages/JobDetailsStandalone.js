@@ -30,25 +30,21 @@ const JobDetailsStandalone = () => {
     setLoading(true);
     setError(null);
     try {
-      const [jobsResponse, detailsResponse, rowsResponse, errorsResponse] = await Promise.all([
-        bulkBridgeAPI.getJobs(),
+      const [jobResponse, detailsResponse, employeesResponse, errorsResponse] = await Promise.all([
+        bulkBridgeAPI.getJob(jobId),
         bulkBridgeAPI.getJobDetails(jobId),
-        bulkBridgeAPI.getImportRows(jobId),
+        bulkBridgeAPI.getImportEmployees(jobId),
         bulkBridgeAPI.getImportErrors(jobId)
       ]);
       
-      // Find the specific job from the jobs list
-      const jobs = jobsResponse.data.data || [];
-      const foundJob = jobs.find(j => j.job_id === jobId);
-      
-      if (!foundJob) {
+      if (!jobResponse.data.data) {
         setError('Job not found');
         return;
       }
       
-      setJob(foundJob);
+      setJob(jobResponse.data.data);
       setJobDetails(detailsResponse.data.data);
-      setImportRows(rowsResponse.data.data || []);
+      setImportRows(employeesResponse.data.data || []);
       setImportErrors(errorsResponse.data.data || []);
     } catch (err) {
       setError('Failed to fetch job data');
@@ -61,7 +57,7 @@ const JobDetailsStandalone = () => {
   const handleDispatchJob = async () => {
     const jobId = getJobIdFromUrl();
     try {
-      await bulkBridgeAPI.dispatchJob(jobId);
+      await bulkBridgeAPI.retryJob(jobId);
       setError(null);
       fetchJobData(jobId); // Refresh the data
     } catch (err) {
@@ -79,6 +75,18 @@ const JobDetailsStandalone = () => {
     } catch (err) {
       setError('Failed to retry job');
       console.error('Error retrying job:', err);
+    }
+  };
+
+  const handleRetryFailedRows = async () => {
+    const jobId = getJobIdFromUrl();
+    try {
+      await bulkBridgeAPI.retryFailedRows(jobId);
+      setError(null);
+      fetchJobData(jobId); // Refresh the data
+    } catch (err) {
+      setError('Failed to retry failed rows');
+      console.error('Error retrying failed rows:', err);
     }
   };
 
@@ -167,6 +175,11 @@ const JobDetailsStandalone = () => {
           {job.status === 'failed' && (
             <button onClick={handleRetryJob} className="action-btn retry">
               Retry
+            </button>
+          )}
+          {(job.status === 'completed' || job.status === 'failed') && job.failed_rows > 0 && (
+            <button onClick={handleRetryFailedRows} className="action-btn retry-failed">
+              Retry Failed Rows
             </button>
           )}
           {(job.status === 'pending' || job.status === 'processing') && (
