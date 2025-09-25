@@ -2,6 +2,31 @@
 
 A robust, full-stack application for bulk importing employee data from CSV files with real-time progress tracking, comprehensive validation, and error handling.
 
+## 🚀 Quick Navigation
+
+| Setup Option | Description | Documentation |
+|--------------|-------------|---------------|
+| **🏠 Local Development** | **Recommended** - Run without Docker | [**LOCAL_DEVELOPMENT.md**](LOCAL_DEVELOPMENT.md) |
+| **🐳 Docker Setup** | Containerized deployment | [Docker Setup](#option-2-docker-setup-alternative) |
+| **⚙️ Configuration** | Environment & deployment configs | [**CONFIGURATION_GUIDE.md**](CONFIGURATION_GUIDE.md) |
+
+> **💡 New to BulkBridge?** Start with [**LOCAL_DEVELOPMENT.md**](LOCAL_DEVELOPMENT.md) for the easiest setup experience.
+
+## 🎯 Getting Started
+
+**Choose your setup method:**
+
+1. **🏠 [Local Development](LOCAL_DEVELOPMENT.md)** - **Recommended for beginners**
+   - No Docker required
+   - Faster development cycle
+   - Easier debugging
+   - Direct access to logs
+
+2. **🐳 [Docker Setup](#option-2-docker-setup-alternative)** - For containerized deployment
+   - Isolated environment
+   - Production-like setup
+   - Consistent across machines
+
 ## 🏗️ Architecture
 
 - **Backend**: Laravel 12 (PHP 8.4) with PostgreSQL
@@ -13,31 +38,83 @@ A robust, full-stack application for bulk importing employee data from CSV files
 
 ## 📋 Prerequisites
 
-Before setting up the application, ensure you have the following installed:
+### For Local Development (Recommended)
+- **PHP 8.2+** with extensions: `pdo_pgsql`, `mbstring`, `zip`, `gd`, `redis`
+- **Composer** (PHP dependency manager)
+- **Node.js 18+** and **npm**
+- **PostgreSQL 13+** (running locally)
+- **Redis** (for queue processing)
+- **Git** for version control
 
-### Required Software
+### For Docker Setup (Alternative)
 - **Docker** (v20.10+) and **Docker Compose** (v2.0+)
 - **PostgreSQL** (v13+) running locally
 - **Git** for version control
 
-### System Requirements
-- **RAM**: Minimum 4GB (8GB recommended for large imports)
-- **Storage**: 2GB free space
-- **OS**: macOS, Linux, or Windows with WSL2
 
 ## 🚀 Quick Start
 
-### 1. Clone the Repository
+### Option 1: Local Development (Recommended)
+
+**Start here for the easiest setup without Docker dependencies.**
+
+#### 1. Prerequisites
+- PHP 8.2+ with extensions: `pdo_pgsql`, `mbstring`, `zip`, `gd`, `redis`
+- Composer
+- Node.js 18+ and npm
+- PostgreSQL 13+ (running locally)
+- Redis (for queue processing)
+
+#### 2. Quick Start
+```bash
+# Clone and setup
+git clone <repository-url>
+cd BulkBridge
+
+# Make the local setup script executable
+chmod +x run-local.sh
+
+# Start all services
+./run-local.sh start
+```
+
+#### 3. Access the Application
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000/api
+- **Health Check**: http://localhost:8000/health
+
+#### 4. Service Management
+```bash
+# Stop all services
+./run-local.sh stop
+
+# Restart all services
+./run-local.sh restart
+
+# Start only backend
+./run-local.sh backend
+
+# Start only frontend
+./run-local.sh frontend
+```
+
+> 📖 **📋 Complete Local Setup Guide**: See [**LOCAL_DEVELOPMENT.md**](LOCAL_DEVELOPMENT.md) for detailed instructions, troubleshooting, and configuration options.
+
+### Option 2: Docker Setup (Alternative)
+
+If you prefer Docker or need containerized deployment:
+
+#### 1. Clone the Repository
 ```bash
 git clone <repository-url>
 cd BulkBridge
 ```
 
-### 2. Database Setup
+#### 2. Database Setup
 Create the PostgreSQL database:
 ```bash
 # Connect to PostgreSQL
-psql -U abedkiloo
+psql -U {your postgres user}
 
 # Create the database
 CREATE DATABASE bulkbridge;
@@ -46,7 +123,7 @@ CREATE DATABASE bulkbridge;
 \q
 ```
 
-### 3. Start the Application
+#### 3. Start with Docker
 ```bash
 # Make the startup script executable
 chmod +x docker-setup.sh
@@ -55,7 +132,7 @@ chmod +x docker-setup.sh
 ./docker-setup.sh
 ```
 
-### 4. Access the Application
+#### 4. Access the Application
 - **Frontend**: http://localhost
 - **Backend API**: http://localhost/api
 - **Health Check**: http://localhost/health
@@ -66,7 +143,7 @@ chmod +x docker-setup.sh
 
 ### Environment Configuration
 
-The application automatically configures itself to use your local PostgreSQL database with the `abedkiloo` user. The Docker setup includes:
+The application automatically configures itself to use your local PostgreSQL database with the `{your postgress user}` user. The Docker setup includes:
 
 - **Backend**: Laravel application with all required PHP extensions
 - **Frontend**: React development server with hot reload
@@ -80,7 +157,7 @@ The system connects to your local PostgreSQL instance:
 - **Host**: `host.docker.internal`
 - **Port**: `5432`
 - **Database**: `bulkbridge`
-- **Username**: `abedkiloo`
+- **Username**: `{your postgess user}`
 - **Password**: (empty)
 
 ### Service Ports
@@ -337,6 +414,30 @@ docker compose down
 docker compose up -d --force-recreate
 ```
 
+#### Docker Issues - Switch to Local Development
+If Docker continues to fail, use the local development setup:
+
+```bash
+# Stop Docker services
+docker compose down
+
+# Use local development instead
+./run-local.sh start
+```
+
+**Common Docker Issues:**
+- Port conflicts (Redis, PostgreSQL already running)
+- Docker daemon not running
+- Insufficient disk space
+- Memory constraints
+- Network issues
+
+**Local Development Benefits:**
+- No Docker overhead
+- Direct access to logs
+- Easier debugging
+- Faster development cycle
+
 #### Queue Worker Not Processing Jobs
 ```bash
 # Check if queue worker is running
@@ -425,20 +526,6 @@ docker compose exec backend php artisan tinker
 - **Nginx logs**: `docker compose logs nginx`
 - **Laravel logs**: `docker compose exec backend cat storage/logs/laravel.log`
 
-## 🔒 Security Considerations
-
-### Production Deployment
-- Change default Redis password
-- Use environment variables for sensitive data
-- Enable HTTPS for production
-- Configure proper database permissions
-- Set up firewall rules
-
-### Data Protection
-- All file uploads are validated
-- SQL injection protection via Eloquent ORM
-- CSRF protection on all forms
-- Input sanitization and validation
 
 ## 📚 API Documentation
 
@@ -623,26 +710,23 @@ docker compose down -v
 ./docker-setup.sh
 ```
 
-## 🤝 Contributing
+## 🆘 Need Help?
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
+### Quick Links
+- **🏠 [Local Development Setup](LOCAL_DEVELOPMENT.md)** - Start here for easiest setup
+- **⚙️ [Configuration Guide](CONFIGURATION_GUIDE.md)** - Environment setup and troubleshooting
+- **🐳 [Docker Setup](#option-2-docker-setup-alternative)** - Containerized deployment
 
-## 📄 License
+### Common Issues
+- **Docker problems?** → Switch to [Local Development](LOCAL_DEVELOPMENT.md)
+- **Configuration issues?** → Check [Configuration Guide](CONFIGURATION_GUIDE.md)
+- **Database connection?** → See [Local Development Guide](LOCAL_DEVELOPMENT.md#database-setup)
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🆘 Support
-
-For support and questions:
-- Check the troubleshooting section above
-- Review the logs for error messages
-- Create an issue in the repository
-- Contact the development team
+### Documentation
+- **[🏠 Local Development Guide](LOCAL_DEVELOPMENT.md)** - Complete local setup instructions
+- **[⚙️ Configuration Guide](CONFIGURATION_GUIDE.md)** - Environment and deployment configurations
+- **[🐳 Docker Setup](#option-2-docker-setup-alternative)** - Containerized deployment guide
 
 ---
 
-**BulkBridge** - Efficiently import and manage employee data at scale! 🚀
+**BulkBridge** - Efficiently import and manage employee data at scale! 
