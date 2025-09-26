@@ -7,7 +7,8 @@ const Navigation = ({ activePage, onPageChange }) => {
   const pages = [
     { id: 'upload', label: 'Upload', icon: 'upload' },
     { id: 'monitor', label: 'Monitor', icon: 'monitor' },
-    { id: 'details', label: 'Details', icon: 'details' }
+    { id: 'details', label: 'Details', icon: 'details' },
+    { id: 'employees', label: 'Employees', icon: 'employees' }
   ];
 
   const renderIcon = (iconType) => {
@@ -18,6 +19,8 @@ const Navigation = ({ activePage, onPageChange }) => {
         return <MonitorIcon size="medium" />;
       case 'details':
         return <DetailsIcon size="medium" />;
+      case 'employees':
+        return <span className="nav-icon-text">👥</span>;
       default:
         return null;
     }

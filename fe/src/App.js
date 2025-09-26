@@ -3,6 +3,7 @@ import Navigation from './components/Navigation';
 import UploadPage from './pages/UploadPage';
 import MonitorPage from './pages/MonitorPage';
 import DetailsPage from './pages/DetailsPage';
+import EmployeePage from './pages/EmployeePage';
 import JobDetailsStandalone from './pages/JobDetailsStandalone';
 import './App.css';
 
@@ -48,6 +49,8 @@ const AppContent = () => {
         );
       case 'details':
         return <DetailsPage />;
+      case 'employees':
+        return <EmployeePage />;
       case 'settings':
         return (
           <div className="settings-page">

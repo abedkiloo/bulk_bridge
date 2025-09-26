@@ -8,17 +8,29 @@ const DetailsPage = () => {
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalJobs, setTotalJobs] = useState(0);
+  const [perPage, setPerPage] = useState(10);
+  const [paginationMeta, setPaginationMeta] = useState({});
 
   useEffect(() => {
     fetchJobs();
-  }, []);
+  }, [currentPage, perPage, filter, searchTerm]);
 
   const fetchJobs = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await bulkBridgeAPI.getJobs();
+      const offset = (currentPage - 1) * perPage;
+      const response = await bulkBridgeAPI.getJobs(perPage, offset, filter, searchTerm);
+      
       setJobs(response.data.data || []);
+      setPaginationMeta(response.data.meta || {});
+      setTotalJobs(response.data.meta?.total || 0);
+      setTotalPages(Math.ceil((response.data.meta?.total || 0) / perPage));
     } catch (err) {
       setError('Failed to fetch jobs');
       console.error('Error fetching jobs:', err);
@@ -130,15 +142,25 @@ const DetailsPage = () => {
   };
 
 
-  const filteredJobs = jobs.filter(job => {
-    const matchesFilter = filter === 'all' || job.status === filter;
-    const matchesSearch = (job.original_filename || '').toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
+  // Reset to first page when filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, searchTerm]);
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+  };
+
+  const handlePerPageChange = (newPerPage) => {
+    setPerPage(newPerPage);
+    setCurrentPage(1);
+  };
 
   const getFilterStats = () => {
+    // For now, we'll use the current page data for stats
+    // In a real app, you might want to fetch total counts separately
     const stats = {
-      all: jobs.length,
+      all: totalJobs,
       completed: jobs.filter(j => (j.status || '') === 'completed').length,
       failed: jobs.filter(j => (j.status || '') === 'failed').length,
       processing: jobs.filter(j => (j.status || '') === 'processing').length,
@@ -196,9 +218,26 @@ const DetailsPage = () => {
           ))}
         </div>
 
-        <button onClick={fetchJobs} className="refresh-btn">
-          🔄 Refresh
-        </button>
+        <div className="pagination-controls">
+          <div className="per-page-selector">
+            <label htmlFor="perPage">Per page:</label>
+            <select
+              id="perPage"
+              value={perPage}
+              onChange={(e) => handlePerPageChange(parseInt(e.target.value))}
+              className="per-page-select"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
+          
+          <button onClick={fetchJobs} className="refresh-btn">
+            🔄 Refresh
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -210,25 +249,37 @@ const DetailsPage = () => {
 
       <div className="details-content">
         <div className="jobs-section">
-          <h2>All Jobs</h2>
-          {filteredJobs.length === 0 ? (
+          <div className="section-header">
+            <h2>All Jobs</h2>
+            <div className="jobs-info">
+              Showing {jobs.length} of {totalJobs} jobs
+              {paginationMeta.from && paginationMeta.to && (
+                <span className="range-info">
+                  ({(paginationMeta.from || 1)}-{paginationMeta.to || jobs.length})
+                </span>
+              )}
+            </div>
+          </div>
+          
+          {jobs.length === 0 ? (
             <div className="no-data">
               <div className="no-data-icon">📁</div>
               <h3>No jobs found</h3>
               <p>No jobs match your current filter</p>
             </div>
           ) : (
-            <div className="jobs-list">
-              <div className="list-header">
-                <div className="header-cell filename">Filename</div>
-                <div className="header-cell status">Status</div>
-                <div className="header-cell metrics">Metrics</div>
-                <div className="header-cell progress">Progress</div>
-                <div className="header-cell date">Date</div>
-                <div className="header-cell actions">Actions</div>
-              </div>
-              
-              {filteredJobs.map((job) => {
+            <>
+              <div className="jobs-list">
+                <div className="list-header">
+                  <div className="header-cell filename">Filename</div>
+                  <div className="header-cell status">Status</div>
+                  <div className="header-cell metrics">Metrics</div>
+                  <div className="header-cell progress">Progress</div>
+                  <div className="header-cell date">Date</div>
+                  <div className="header-cell actions">Actions</div>
+                </div>
+                
+                {jobs.map((job) => {
                 const jobStatus = getJobStatus(job);
                 return (
                   <div key={job.id} className="job-row">
@@ -372,7 +423,79 @@ const DetailsPage = () => {
                   </div>
                 );
               })}
-            </div>
+              </div>
+              
+              {/* Pagination Component */}
+              {totalPages > 1 && (
+                <div className="pagination">
+                  <div className="pagination-info">
+                    Page {currentPage} of {totalPages}
+                  </div>
+                  
+                  <div className="pagination-buttons">
+                    <button
+                      onClick={() => handlePageChange(1)}
+                      disabled={currentPage === 1}
+                      className="pagination-btn first"
+                      title="First page"
+                    >
+                      ⏮️
+                    </button>
+                    
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="pagination-btn prev"
+                      title="Previous page"
+                    >
+                      ◀️
+                    </button>
+                    
+                    {/* Page numbers */}
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`pagination-btn page ${currentPage === pageNum ? 'active' : ''}`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                    
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="pagination-btn next"
+                      title="Next page"
+                    >
+                      ▶️
+                    </button>
+                    
+                    <button
+                      onClick={() => handlePageChange(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className="pagination-btn last"
+                      title="Last page"
+                    >
+                      ⏭️
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 

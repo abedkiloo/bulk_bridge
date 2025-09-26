@@ -59,12 +59,25 @@ class ImportService
         return ImportJob::where('uuid', $jobId)->first();
     }
 
-    public function getImportJobs(int $limit = 50, int $offset = 0): \Illuminate\Database\Eloquent\Collection
+    public function getImportJobs(int $limit = 50, int $offset = 0, ?string $status = null, ?string $search = null): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
-        return ImportJob::orderBy('created_at', 'desc')
-            ->limit($limit)
-            ->offset($offset)
-            ->get();
+        $query = ImportJob::query();
+
+        // Apply status filter
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        // Apply search filter
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('original_filename', 'like', "%{$search}%")
+                  ->orWhere('uuid', 'like', "%{$search}%");
+            });
+        }
+
+        return $query->orderBy('created_at', 'desc')
+            ->paginate($limit, ['*'], 'page', ceil(($offset / $limit) + 1));
     }
 
     public function cancelImport(string $jobId): bool

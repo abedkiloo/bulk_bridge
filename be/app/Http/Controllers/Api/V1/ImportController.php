@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Services\ImportService;
+use App\Services\ProgressTrackingService;
 use App\Http\Requests\ImportCsvRequest;
 use App\Http\Resources\ImportJobResource;
 use Illuminate\Http\JsonResponse;
@@ -12,7 +13,8 @@ use Illuminate\Http\Request;
 class ImportController extends Controller
 {
     public function __construct(
-        private ImportService $importService
+        private ImportService $importService,
+        private ProgressTrackingService $progressTracker
     ) {}
 
     /**
@@ -57,15 +59,21 @@ class ImportController extends Controller
     {
         $limit = $request->get('limit', 50);
         $offset = $request->get('offset', 0);
+        $status = $request->get('status');
+        $search = $request->get('search');
 
-        $jobs = $this->importService->getImportJobs($limit, $offset);
+        $jobs = $this->importService->getImportJobs($limit, $offset, $status, $search);
 
         return response()->json([
             'data' => ImportJobResource::collection($jobs),
             'meta' => [
                 'limit' => $limit,
                 'offset' => $offset,
-                'total' => count($jobs)
+                'total' => $jobs->total(),
+                'from' => $jobs->firstItem(),
+                'to' => $jobs->lastItem(),
+                'current_page' => $jobs->currentPage(),
+                'last_page' => $jobs->lastPage(),
             ]
         ]);
     }
@@ -255,6 +263,60 @@ class ImportController extends Controller
                 'duplicate_rows' => $job->duplicate_rows,
                 'updated_at' => $job->updated_at->toISOString()
             ]
+        ]);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/api/v1/imports/{jobId}/status/redis",
+     *     summary="Get import job status from Redis cache",
+     *     @OA\Parameter(name="jobId", in="path", required=true, description="Import job UUID", @OA\Schema(type="string")),
+     *     @OA\Response(response=200, description="Job status from Redis"),
+     *     @OA\Response(response=404, description="Job not found")
+     * )
+     */
+    public function statusFromRedis(string $jobId): JsonResponse
+    {
+        // Try to get data from Redis first
+        $redisData = $this->progressTracker->getProgress($jobId);
+        
+        if ($redisData) {
+            return response()->json([
+                'data' => $redisData,
+                'source' => 'redis',
+                'cached_at' => $redisData['updated_at'] ?? now()->toISOString()
+            ]);
+        }
+        
+        // Fallback to database if Redis data is not available
+        $job = $this->importService->getImportStatus($jobId);
+        
+        if (!$job) {
+            return response()->json([
+                'message' => 'Import job not found'
+            ], 404);
+        }
+
+        // Convert database model to Redis format and cache it
+        $fallbackData = [
+            'job_id' => $job->uuid,
+            'status' => $job->status,
+            'total_rows' => $job->total_rows,
+            'processed_rows' => $job->processed_rows,
+            'successful_rows' => $job->successful_rows,
+            'failed_rows' => $job->failed_rows,
+            'duplicate_rows' => $job->duplicate_rows,
+            'progress_percentage' => $job->progress_percentage,
+            'updated_at' => $job->updated_at->toISOString()
+        ];
+
+        // Cache the data in Redis for future requests
+        $this->progressTracker->updateProgress($job);
+
+        return response()->json([
+            'data' => $fallbackData,
+            'source' => 'database_fallback',
+            'cached_at' => now()->toISOString()
         ]);
     }
 }

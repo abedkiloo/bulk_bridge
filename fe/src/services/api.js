@@ -35,10 +35,15 @@ export const bulkBridgeAPI = {
   },
 
   // Get all import jobs
-  getJobs: async (limit = 50, offset = 0) => {
-    return api.get('/v1/imports', {
-      params: { limit, offset }
-    });
+  getJobs: async (limit = 50, offset = 0, filter = null, search = null) => {
+    const params = { limit, offset };
+    if (filter && filter !== 'all') {
+      params.status = filter;
+    }
+    if (search) {
+      params.search = search;
+    }
+    return api.get('/v1/imports', { params });
   },
 
   // Get import job details
@@ -78,6 +83,42 @@ export const bulkBridgeAPI = {
   // Retry only failed rows from a job
   retryFailedRows: async (jobId) => {
     return api.post(`/v1/imports/${jobId}/retry-failed`);
+  },
+
+  // Employee Management APIs
+  getEmployees: async (params = {}) => {
+    return api.get('/v1/employees', { params });
+  },
+
+  getEmployee: async (id) => {
+    return api.get(`/v1/employees/${id}`);
+  },
+
+  updateEmployee: async (id, data) => {
+    return api.put(`/v1/employees/${id}`, data);
+  },
+
+  deleteEmployee: async (id) => {
+    return api.delete(`/v1/employees/${id}`);
+  },
+
+  getDepartments: async () => {
+    return api.get('/v1/employees/departments');
+  },
+
+  getEmployeeStatistics: async () => {
+    return api.get('/v1/employees/statistics');
+  },
+
+  clearAllEmployees: async () => {
+    return api.delete('/v1/employees/clear-all');
+  },
+
+  bulkUpdateEmployees: async (employeeIds, updates) => {
+    return api.post('/v1/employees/bulk-update', {
+      employee_ids: employeeIds,
+      updates: updates
+    });
   },
 };
 
