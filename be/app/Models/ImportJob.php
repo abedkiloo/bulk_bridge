@@ -59,10 +59,6 @@ class ImportJob extends Model
         return $this->hasMany(ImportError::class, 'import_job_id', 'uuid');
     }
 
-    public function importRows(): HasMany
-    {
-        return $this->hasMany(ImportRow::class, 'import_job_id', 'uuid');
-    }
 
     // Scopes
     public function scopePending($query)
