@@ -4,10 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Employee;
 use App\Models\ImportJob;
-use App\Models\ImportRow;
 use App\Models\ImportError;
 use App\Jobs\ProcessBulkImportJob;
-use App\Jobs\ProcessImportRowJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Http\UploadedFile;
@@ -210,33 +208,6 @@ class BulkImportTest extends TestCase
                 ]);
     }
 
-    /**
-     * Test import rows retrieval
-     */
-    public function test_can_get_import_rows(): void
-    {
-        $importJob = ImportJob::factory()->create();
-        
-        ImportRow::factory()->count(3)->create([
-            'import_job_id' => $importJob->id
-        ]);
-
-        $response = $this->getJson("/api/imports/{$importJob->job_id}/rows");
-
-        $response->assertStatus(200)
-                ->assertJsonStructure([
-                    'success',
-                    'data' => [
-                        '*' => [
-                            'id',
-                            'row_number',
-                            'status',
-                            'raw_data'
-                        ]
-                    ],
-                    'pagination'
-                ]);
-    }
 
     /**
      * Test job queue processing
@@ -254,27 +225,6 @@ class BulkImportTest extends TestCase
         });
     }
 
-    /**
-     * Test row processing job
-     */
-    public function test_process_import_row_job(): void
-    {
-        Queue::fake();
-
-        $importJob = ImportJob::factory()->create();
-        $importRows = ImportRow::factory()->count(5)->create([
-            'import_job_id' => $importJob->id
-        ]);
-
-        $rowIds = $importRows->pluck('id')->toArray();
-
-        ProcessImportRowJob::dispatch($importJob->id, $rowIds);
-
-        Queue::assertPushed(ProcessImportRowJob::class, function ($job) use ($importJob, $rowIds) {
-            return $job->importJobId === $importJob->id && 
-                   $job->importRowIds === $rowIds;
-        });
-    }
 
     /**
      * Test employee creation through import
@@ -295,11 +245,6 @@ class BulkImportTest extends TestCase
             'start_date' => '2020-01-15'
         ];
 
-        $importRow = ImportRow::factory()->create([
-            'import_job_id' => $importJob->id,
-            'raw_data' => $rowData,
-            'status' => 'pending'
-        ]);
 
         $employee = Employee::upsertEmployee($rowData, $importJob->job_id);
 

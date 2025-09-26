@@ -340,7 +340,6 @@ class SystemController extends Controller
                 'import_jobs' => DB::table('import_jobs')->count(),
                 'employees' => DB::table('employees')->count(),
                 'import_errors' => DB::table('import_errors')->count(),
-                'import_rows' => DB::table('import_rows')->count(),
                 'failed_jobs' => DB::table('failed_jobs')->count(),
             ];
         } catch (\Exception $e) {
